@@ -1,0 +1,7 @@
+\subsection{Hệ thống Đa tác tử (Multi-Agent System) \& CoT}
+Thay vì dùng một AI duy nhất để xử lý toàn bộ luồng, \textbf{Multi-Agent System} chia nhỏ nghiệp vụ:
+\begin{itemize}
+    \item \textbf{Chia để trị (Divide and Conquer):} Mỗi Tác tử (Agent) như Bus Agent, Hotel Agent chỉ chứa Tools và Prompt chuyên biệt.
+    \item \textbf{Chain-of-Thought (CoT):} Cơ chế ép LLM "suy nghĩ từng bước" trước khi ra kết luận.
+    \item \textbf{Orchestrator (Bộ điều phối):} Tác tử trung tâm sử dụng CoT để lập kế hoạch, gọi Bus Agent tìm vé, lấy giờ đến, truyền cho Hotel Agent tìm phòng khớp giờ. Nếu có xung đột, Orchestrator tự động đàm phán lại.
+\end{itemize}

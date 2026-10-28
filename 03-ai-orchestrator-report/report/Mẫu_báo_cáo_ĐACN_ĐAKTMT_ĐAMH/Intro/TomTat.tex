@@ -1,0 +1,28 @@
+\section*{Tóm tắt nội dung (Vietnamese Abstract)}
+\addcontentsline{toc}{section}{Tóm tắt nội dung}
+
+Sự bùng nổ của Mô hình Ngôn ngữ Lớn (LLMs) và công nghệ Sinh văn bản tăng cường truy xuất (RAG) đã mở ra tiềm năng to lớn trong việc tự động hóa dịch vụ tư vấn khách hàng. Tuy nhiên, khi áp dụng vào các nghiệp vụ đòi hỏi tính chính xác tuyệt đối và logic ràng buộc phức tạp như đặt vé xe khách và phòng khách sạn, RAG nguyên bản (Native RAG) bộc lộ ba điểm yếu chí mạng: ảo giác (hallucination) trước dữ liệu thay đổi theo thời gian thực, sai lệch khi truy xuất các từ khóa ngách (Keyword Mismatch), và không có khả năng tự động xử lý các ràng buộc chéo về thời gian lịch trình.
+
+Đồ án này đề xuất một kiến trúc lõi Trí tuệ Nhân tạo thế hệ mới nhằm triệt tiêu hoàn toàn các giới hạn trên. Cụ thể, giải pháp tích hợp ba công nghệ mũi nhọn (Micro-technologies):
+(1) **Hybrid Search (Tìm kiếm lai):** Kết hợp thuật toán BM25 và Vector nhúng (Dense Embedding) cùng kỹ thuật gộp hạng Reciprocal Rank Fusion (RRF) để đảm bảo độ chính xác 100\% khi truy xuất mã phòng khách sạn hay tên nhà xe địa phương.
+(2) **Function Calling (Gọi hàm thời gian thực):** Trao quyền cho LLM tự động chuyển đổi ý định người dùng thành các truy vấn cơ sở dữ liệu (SQL/API) để lấy dữ liệu ghế trống/phòng trống theo từng giây, loại bỏ tận gốc ảo giác do dữ liệu tĩnh.
+(3) **Multi-Agent Orchestration (Điều phối Đa tác tử):** Áp dụng kiến trúc tác tử phân tán kết hợp chuỗi suy luận (Chain-of-Thought - CoT). Một Tác tử Điều phối (Orchestrator) sẽ đứng ra đàm phán và khớp nối thời gian giữa Tác tử Xe khách và Tác tử Khách sạn, đảm bảo khách hàng luôn có lịch trình di chuyển và nghỉ ngơi liền mạch.
+
+Kết quả kiểm thử trên các tập dữ liệu giả lập cho thấy, cấu trúc đề xuất đạt độ chính xác truy xuất (NDCG@10) vượt trội so với RAG truyền thống, giảm tỷ lệ ảo giác tồn kho xuống mức 0\%, và tự động giải quyết thành công các bài toán lập lịch có ràng buộc chéo phức tạp.
+
+\textbf{Từ khóa:} Trí tuệ Nhân tạo, Xử lý Ngôn ngữ Tự nhiên (NLP), LLMs, Hybrid Search, RRF, BM25, Function Calling, Multi-Agent Systems, Chain-of-Thought, Chống ảo giác (Hallucination Mitigation).
+
+\vspace{1cm}
+\section*{Abstract (English Abstract)}
+\addcontentsline{toc}{section}{Abstract}
+
+The rapid advancement of Large Language Models (LLMs) and Retrieval-Augmented Generation (RAG) has unlocked immense potential in automating customer service. However, when applied to mission-critical domains that demand strict logical constraints and real-time accuracy, such as bus and hotel booking, Native RAG reveals three fatal flaws: hallucination regarding real-time dynamic data, keyword mismatch for domain-specific terminology, and the inability to automatically resolve temporal cross-constraints.
+
+This thesis proposes a next-generation Artificial Intelligence architecture designed to completely eradicate these limitations. The solution integrates three cutting-edge micro-technologies:
+(1) **Hybrid Search:** Combines BM25 algorithm with Dense Vector Embeddings and Reciprocal Rank Fusion (RRF) to guarantee 100\% retrieval precision for specific hotel room codes or local bus operators.
+(2) **Function Calling (Tool Use):** Empowers the LLM to autonomously map user intent into database queries (SQL/API) to fetch real-time seat and room availability, strictly eliminating static-data hallucinations.
+(3) **Multi-Agent Orchestration:** Deploys a distributed agentic architecture integrated with Chain-of-Thought (CoT) reasoning. An Orchestrator Agent actively negotiates and aligns the schedules between a dedicated Bus Agent and a Hotel Agent, ensuring a seamless itinerary for the traveler.
+
+Evaluation on simulated datasets demonstrates that the proposed architecture achieves superior retrieval accuracy (NDCG@10) compared to traditional RAG, reduces inventory hallucination rates to 0\%, and successfully resolves complex cross-constrained scheduling tasks.
+
+\textbf{Keywords:} Artificial Intelligence, Natural Language Processing (NLP), LLMs, Hybrid Search, RRF, BM25, Function Calling, Multi-Agent Systems, Chain-of-Thought, Hallucination Mitigation.

@@ -1,0 +1,39 @@
+\subsection{Mạng Markov trong Hệ thống Đa tác tử (Multi-Agent Systems) và Chuỗi Suy luận (Chain-of-Thought)}
+
+\subsubsection{Sự Sụp đổ Cửa sổ Ngữ cảnh của Single-Agent}
+Một tác tử AI đơn lẻ (Single-Agent) khi đối mặt với một chuỗi nghiệp vụ phức tạp có tính ràng buộc chéo (Cross-constraints) — ví dụ: "Tìm vé xe tới nơi trước giờ check-in khách sạn, nếu không có vé thì phải đàm phán lại giờ check-in" — thường gặp hiện tượng Sụp đổ Cửa sổ Ngữ cảnh (Context Window Collapse) hoặc Trôi logic (Logical Drift). 
+
+Về mặt toán học, xác suất để một mô hình sinh đúng một chuỗi suy luận dài có độ dài $N$ giảm theo cấp số nhân: $P_{success} = \prod_{i=1}^{N} P(c_i | x, c_{<i})$. Khi $N$ tăng lên do phải xử lý đồng thời logic của cả nghiệp vụ xe khách và khách sạn, tích xác suất này tụt dốc thảm hại, khiến AI đưa ra quyết định phi logic.
+
+\subsubsection{Kiến trúc Đa tác tử qua lăng kính Đồ thị Có Hướng (Directed Graph)}
+Để giải quyết sự bùng nổ độ phức tạp, Hệ thống Đa tác tử (Multi-Agent System - MAS) phân rã bài toán thành một \textbf{Đồ thị Chuyển đổi Trạng thái (State Transition Graph)}. Đồ thị này được định nghĩa là một hệ thống $G = (\mathcal{A}, \mathcal{S}, \mathcal{T})$, trong đó:
+\begin{itemize}
+    \item $\mathcal{A} = \{A_{Orchestrator}, A_{Bus}, A_{Hotel}\}$ là tập hợp các Tác tử (Agents / Nodes).
+    \item $\mathcal{S}$ là Không gian Trạng thái Chia sẻ (Shared State), chứa toàn bộ Bộ nhớ làm việc (Working Memory), bao gồm Lịch sử chat, Kế hoạch thực thi và Ngữ cảnh đặt chỗ hiện tại.
+    \item $\mathcal{T}: \mathcal{S} \times \mathcal{A} \rightarrow \mathcal{S} \times \mathcal{A}$ là Hàm chuyển trạng thái (Edges), được xác định bởi logic định tuyến (Routing Logic) của Tác tử Điều phối.
+\end{itemize}
+
+Hệ thống hoạt động tương tự một \textbf{Quá trình Quyết định Markov (Markov Decision Process - MDP)} rút gọn, trong đó tại mỗi bước thời gian $t$, trạng thái tiếp theo $s_{t+1}$ chỉ phụ thuộc vào trạng thái hiện tại $s_t$ và hành động của tác tử $a_t \in \mathcal{A}$ nắm quyền điều khiển (Markov Property). 
+
+Bằng cách phân rã này, $A_{Bus}$ chỉ chứa Tools và Prompt liên quan đến tuyến đường, $A_{Hotel}$ chỉ chứa Tools về phòng ốc. Không gian từ vựng $\mathcal{V}$ và không gian hàm $\mathcal{S}_{tool}$ của mỗi tác tử được thu hẹp, tối đa hóa mật độ tập trung (Attention Density) trong cơ chế Self-Attention của LLM.
+
+\subsubsection{Cơ sở lý thuyết của Chuỗi Suy luận (Chain-of-Thought - CoT)}
+Để $A_{Orchestrator}$ có thể đưa ra quyết định chuyển đổi trạng thái $\mathcal{T}$ chính xác giữa các Tác tử chuyên biệt, đồ án ứng dụng kỹ thuật \textbf{Chain-of-Thought (CoT)} (Wei et al., 2022). 
+
+Thay vì ánh xạ trực tiếp từ câu hỏi đầu vào $X$ sang câu trả lời $Y$ qua phân phối $P(Y|X)$, CoT bắt buộc mô hình phải sinh ra một chuỗi các bước lập luận trung gian (Intermediate Reasoning Tokens) $C = (c_1, c_2, \dots, c_m)$. Phân phối xác suất tổng thể trở thành:
+\begin{equation}
+    P(Y|X) = \sum_{C} P(Y|X, C) P(C|X)
+\end{equation}
+
+Khả năng giải quyết bài toán phức tạp tăng lên đáng kể vì chuỗi $C$ hoạt động như một vùng bộ nhớ tạm (scratchpad) cho phép LLM phân giải một nhiệm vụ $\mathcal{O}(N^2)$ thành chuỗi các nhiệm vụ $\mathcal{O}(N)$. 
+
+\textbf{Quy trình áp dụng CoT trong Orchestrator:}
+\begin{enumerate}
+    \item \textbf{Monologue (Tự thoại):} "Khách muốn đi xe lúc 8h và check-in ngay. Mình cần gọi $A_{Bus}$ trước để xem mấy giờ xe đến."
+    \item \textbf{Action:} \texttt{Route\_to: Bus\_Agent}.
+    \item \textbf{Observation (Quan sát):} (State cập nhật: Xe đến lúc 12h).
+    \item \textbf{Monologue:} "Xe đến lúc 12h. Quy định khách sạn là 14h check-in. Khách sẽ phải đợi 2 tiếng. Mình phải gọi $A_{Hotel}$ để đàm phán chính sách Early Check-in."
+    \item \textbf{Action:} \texttt{Route\_to: Hotel\_Agent}.
+\end{enumerate}
+
+Nhờ sự kết hợp giữa lý thuyết Đồ thị Trạng thái (để chia nhỏ ngữ cảnh) và CoT (để kết dính logic đàm phán), hệ thống có khả năng tự động xử lý các rẽ nhánh phức tạp nhất mà không bị mất đi tính minh bạch và độ chính xác của một hệ thống Enterprise cấp cao.

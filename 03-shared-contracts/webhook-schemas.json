@@ -1,0 +1,103 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Immutable API Contracts for Retail Automatic SaaS",
+  "description": "HỢP ĐỒNG BẤT KHẢ XÂM PHẠM: Tuyệt đối không được thay đổi nếu chưa có sự đồng ý của CTO. Chuẩn này dùng chung cho cả Plan A (n8n) và Plan B (FastAPI Microservices).",
+  "contracts": {
+    "incoming_webhook": {
+      "description": "Payload tin nhắn đến nhận từ Chatwoot (Facebook/Zalo/WhatsApp) gửi sang n8n hoặc FastAPI",
+      "type": "object",
+      "required": ["event", "inbox_id", "conversation_id", "sender", "content"],
+      "properties": {
+        "event": {
+          "type": "string",
+          "enum": ["message_created", "conversation_status_changed"]
+        },
+        "inbox_id": {
+          "type": "integer",
+          "description": "ID duy nhất của Quán ăn/Nhà hàng (Tenant ID)"
+        },
+        "conversation_id": {
+          "type": "integer",
+          "description": "ID phiên chat hiện tại"
+        },
+        "message_type": {
+          "type": "string",
+          "enum": ["incoming", "outgoing"]
+        },
+        "content": {
+          "type": "string",
+          "description": "Nội dung tin nhắn khách hàng gửi"
+        },
+        "sender": {
+          "type": "object",
+          "required": ["id", "name"],
+          "properties": {
+            "id": { "type": "string" },
+            "name": { "type": "string" },
+            "phone_number": { "type": "string" },
+            "avatar_url": { "type": "string" }
+          }
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "outgoing_reply": {
+      "description": "Payload chuẩn khi n8n hoặc FastAPI trả lời tin nhắn về lại Chatwoot",
+      "type": "object",
+      "required": ["content"],
+      "properties": {
+        "content": {
+          "type": "string",
+          "description": "Nội dung phản hồi từ AI hoặc thông báo lỗi bảo trì"
+        },
+        "message_type": {
+          "type": "string",
+          "default": "outgoing"
+        },
+        "private": {
+          "type": "boolean",
+          "default": false
+        },
+        "content_type": {
+          "type": "string",
+          "enum": ["text", "input_select", "cards", "form_link"],
+          "default": "text"
+        },
+        "content_attributes": {
+          "type": "object",
+          "description": "Dùng để đính kèm link Web Form chọn món Typebot hoặc nút bấm Zalo/FB"
+        }
+      }
+    },
+    "order_submission": {
+      "description": "Payload khi khách điền xong Form đặt món trên Typebot gửi về n8n/FastAPI",
+      "type": "object",
+      "required": ["inbox_id", "customer_phone", "total_amount", "items"],
+      "properties": {
+        "inbox_id": { "type": "integer" },
+        "customer_name": { "type": "string" },
+        "customer_phone": { "type": "string" },
+        "delivery_address": { "type": "string" },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["item_id", "name", "quantity", "price"],
+            "properties": {
+              "item_id": { "type": "string" },
+              "name": { "type": "string" },
+              "quantity": { "type": "integer" },
+              "price": { "type": "integer" },
+              "notes": { "type": "string" }
+            }
+          }
+        },
+        "total_amount": { "type": "integer" },
+        "submitted_at": { "type": "string", "format": "date-time" }
+      }
+    }
+  }
+}

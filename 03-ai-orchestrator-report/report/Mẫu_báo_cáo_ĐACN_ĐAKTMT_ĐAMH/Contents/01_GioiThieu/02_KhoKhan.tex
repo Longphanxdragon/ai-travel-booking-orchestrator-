@@ -1,0 +1,9 @@
+\subsection{Thách thức và Bài toán đặt ra}
+
+Việc ứng dụng AI vào nghiệp vụ lập lịch trình có tính ràng buộc cao phải đối mặt với ba bài toán lớn mang tính nền tảng trong Khoa học Máy tính:
+
+\begin{enumerate}
+    \item \textbf{Ảo giác dữ liệu động (Dynamic Data Hallucination):} Trạng thái của các hệ thống giao dịch (số ghế trống, phòng khách sạn) là các hàm biến thiên liên tục theo thời gian $t$. Quá trình nhúng tài liệu tĩnh vào Cơ sở dữ liệu Vector khiến LLM mất đi khả năng kiểm chứng trạng thái thực tế, dẫn đến việc mô hình tự tin suy diễn và cung cấp các thông tin tồn kho không tồn tại (Ảo giác).
+    \item \textbf{Sự suy biến tín hiệu từ khóa (Keyword Mismatch):} Phương pháp nhúng không gian liên tục (Dense Vector Embeddings) ưu tiên sự tương đồng về mặt ngữ nghĩa (Semantic Similarity) nhưng lại làm suy biến các đặc trưng rời rạc (Discrete Features). Điều này khiến hệ thống liên tục đánh đồng, nhầm lẫn hoặc bỏ sót các định danh đặc thù như mã phòng hay tên riêng của nhà xe.
+    \item \textbf{Ràng buộc chéo và Phân rã logic (Temporal Cross-constraints):} Bài toán lập lịch trình bao gồm nhiều khâu phụ thuộc lẫn nhau (ví dụ: giờ xe đến phải thỏa mãn điều kiện giờ check-in của khách sạn). Một tác tử AI đơn lẻ (Single-Agent) khi phải đối mặt với không gian trạng thái quá lớn sẽ nhanh chóng bị tràn bộ nhớ ngữ cảnh (Context Window Overflow) và đánh mất chuỗi suy luận logic, không thể tự động đàm phán các xung đột thời gian.
+\end{enumerate}

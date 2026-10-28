@@ -1,0 +1,7 @@
+\subsection{Yêu cầu chức năng của Tech Core AI}
+Đóng vai trò là một dịch vụ AI trung tâm (Plug-in Service), hệ thống phải đáp ứng các yêu cầu:
+\begin{enumerate}
+    \item \textbf{Quản lý tri thức tĩnh (Hybrid Search):} Lập chỉ mục văn bản chính sách, cẩm nang du lịch sử dụng đồng thời Dense Vector và BM25 vào Qdrant.
+    \item \textbf{Truy vấn dữ liệu động (Function Calling):} Chuyển đổi ý định của khách hàng thành các lệnh gọi API kiểm tra vé xe, phòng trống trực tiếp trên CSDL PostgreSQL.
+    \item \textbf{Điều phối Đa tác tử (Orchestration):} Duy trì Biến trạng thái (Shared State) xuyên suốt phiên hội thoại, tự động chuyển luồng (Routing) giữa các Agent chuyên biệt để giải quyết ràng buộc lịch trình.
+\end{enumerate}

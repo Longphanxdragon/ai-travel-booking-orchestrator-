@@ -1,0 +1,25 @@
+\subsection{Không gian Vector (Embedding Space) và Giới hạn của RAG Nguyên bản}
+
+\subsubsection{Cơ sở toán học của Mô hình nhúng (Embedding Models)}
+Mô hình Sinh văn bản tăng cường truy xuất (RAG) nguyên bản dựa trên phép biến đổi ngữ nghĩa văn bản thành các biểu diễn liên tục (continuous representations) trong không gian vector. Gọi $\mathcal{V}$ là không gian văn bản đầu vào (tập hợp các chuỗi token), một mô hình nhúng (Embedding Model) $\mathcal{E}$ thực hiện ánh xạ phi tuyến:
+\begin{equation}
+    \mathcal{E}: \mathcal{V} \rightarrow \mathbb{R}^d
+\end{equation}
+Trong đó, $d$ là số chiều của không gian ẩn (latent space), thường $d \in \{384, 768, 1536\}$ tùy thuộc vào kiến trúc Transformer (ví dụ: BERT, mE5, OpenAI text-embedding). Quá trình truy xuất (Retrieval) thực chất là bài toán tìm kiếm điểm lân cận gần nhất (Approximate Nearest Neighbor Search) trên đa tạp nhiều chiều. 
+
+Với một câu truy vấn $q \in \mathcal{V}$ và tập tài liệu ngữ cảnh $D = \{d_1, d_2, \dots, d_N\}$, độ đo phổ biến nhất là Độ tương đồng Cosine (Cosine Similarity), tính toán góc $\theta$ giữa hai vector trong không gian $\mathbb{R}^d$:
+\begin{equation}
+    \text{sim}(q, d_i) = \frac{\mathcal{E}(q) \cdot \mathcal{E}(d_i)}{\|\mathcal{E}(q)\|_2 \|\mathcal{E}(d_i)\|_2} = \cos(\theta)
+\end{equation}
+
+\subsubsection{Hiện tượng suy biến tín hiệu rời rạc (Discrete Signal Degradation)}
+Dù giải quyết xuất sắc bài toán tương đồng ngữ nghĩa (Semantic Similarity), Dense Embedding bộc lộ khiếm khuyết chí mạng về mặt \textbf{Lý thuyết Thông tin (Information Theory)} khi áp dụng vào miền dữ liệu chuyên biệt (Domain-specific).
+
+Khi khách hàng tìm kiếm một từ khóa chính xác (Exact Match) mang tính định danh — ví dụ mã phòng "VIP-102" hay mã khách hàng "KH889" — tín hiệu thông tin rời rạc, sắc bén này bị "hòa tan" (smoothed out) vào các đặc trưng liên tục của không gian $\mathbb{R}^d$. Sự suy biến tín hiệu này dẫn đến hiện tượng \textbf{Keyword Mismatch}. 
+
+Hơn nữa, các không gian nhúng của LLM thường mắc phải hội chứng Bất đẳng hướng (Anisotropy), trong đó các vector có xu hướng co cụm lại trong một hình nón hẹp của không gian. Điều này khiến khoảng cách Cosine giữa tài liệu chứa mã "VIP-102" và "VIP-103" tiến gần về 0 (độ tương đồng rất cao dù thực chất khác biệt hoàn toàn về mặt logic), gây nhiễu loạn phân phối truy xuất.
+
+\subsubsection{Bài toán Lỗ hổng thời gian thực (The Real-time Data Cutoff Problem)}
+Kiến trúc RAG nguyên bản được xây dựng dựa trên giả định tập tài liệu $D$ là tĩnh (Static Knowledge Base). Tuy nhiên, trong mô hình Đặt lịch trình và Vận tải, tồn kho (hành khách, số ghế, trạng thái phòng) là các biến số thay đổi liên tục theo hàm thời gian $t$. 
+
+Nếu không gian vector không được cập nhật $\mathcal{E}(d_i, t)$ liên tục — một công việc gần như bất khả thi do giới hạn về chi phí tính toán $\mathcal{O}(N \cdot d)$ của việc re-embedding — LLM sẽ bắt buộc phải nội suy trên một thực tại đã lỗi thời. Hậu quả tất yếu của quá trình này là tình trạng \textbf{Ảo giác (Hallucination)}, nơi AI đưa ra quyết định sai lệch. Để phá vỡ giới hạn của hình học vector tĩnh, hệ thống đòi hỏi một cơ chế vượt bậc: \textit{Function Calling} (Gọi hàm) và \textit{Agentic Workflows} (Luồng công việc tự chủ).

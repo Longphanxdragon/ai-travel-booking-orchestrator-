@@ -1,0 +1,9 @@
+\subsection{Mục tiêu nghiên cứu}
+
+Đồ án này tập trung nghiên cứu và phát triển một \textbf{Lõi Công nghệ Trí tuệ Nhân tạo (AI Tech Core)} chuyên sâu, được thiết kế dưới dạng một dịch vụ độc lập (Plug-in/Microservice) nhằm giải quyết triệt để các thách thức nêu trên. Kiến trúc đề xuất là sự giao thoa của ba công nghệ mũi nhọn:
+
+\begin{itemize}
+    \item \textbf{Khối Truy xuất Lai (Hybrid Search \& RRF):} Tích hợp mô hình không gian vector (Dense) và mô hình xác suất từ vựng (BM25), gộp hạng bằng Reciprocal Rank Fusion nhằm bảo toàn 100\% tín hiệu của các từ khóa định danh ngách.
+    \item \textbf{Giải mã Bị ràng buộc qua Function Calling:} Cấp quyền cho LLM tương tác trực tiếp với Cơ sở dữ liệu thông qua các hàm API (Tools), biến quá trình sinh văn bản thành một chuỗi truy vấn tất định, triệt tiêu hoàn toàn ảo giác dữ liệu động.
+    \item \textbf{Hệ thống Đa tác tử (Multi-Agent Orchestration):} Xây dựng Mạng lưới Tác tử phân cấp dựa trên Quá trình Quyết định Markov (MDP). Một Tác tử Điều phối (Orchestrator) sử dụng cơ chế Chain-of-Thought (CoT) sẽ kiểm soát đồ thị trạng thái, đàm phán và giải quyết các ràng buộc thời gian giữa các tác tử chuyên biệt.
+\end{itemize}

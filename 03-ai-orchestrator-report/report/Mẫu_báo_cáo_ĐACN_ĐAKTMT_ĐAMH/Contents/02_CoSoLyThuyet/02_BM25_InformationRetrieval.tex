@@ -1,0 +1,61 @@
+\subsection{Mô hình Truy xuất Thông tin (Information Retrieval), Thuật toán Okapi BM25 và Kỹ thuật Tìm kiếm Lai (Hybrid Search)}
+
+Để vượt qua những giới hạn cố hữu của không gian nhúng liên tục (như đã phân tích ở Mục 2.1), các hệ thống RAG hiện đại (Advanced RAG) buộc phải quay trở lại khai thác sức mạnh của các mô hình đối sánh từ khóa chính xác (Exact Keyword Matching). Nền tảng của phương pháp này là \textbf{Mô hình Khung liên quan Xác suất (Probabilistic Relevance Framework - PRF)} với đại diện xuất sắc nhất là thuật toán Okapi BM25.
+
+\subsubsection{Cơ sở toán học của Mô hình Khung liên quan Xác suất (PRF)}
+Khác với phương pháp nhúng (Embedding) dựa trên học sâu (Deep Learning), Mô hình Khung liên quan Xác suất do Robertson và Spärck Jones (1976) khởi xướng tiếp cận bài toán tìm kiếm dưới góc độ lý thuyết xác suất Bayes. 
+
+Giả sử $D$ là tập hợp tất cả các tài liệu và $Q$ là một truy vấn. Mục tiêu của hệ thống IR là ước lượng xác suất một tài liệu $d \in D$ có liên quan (relevant - ký hiệu là $R$) hoặc không liên quan (non-relevant - ký hiệu là $\bar{R}$) đối với truy vấn $q \in Q$. Theo định lý Bayes, odds (tỷ lệ chênh) của sự liên quan được định nghĩa là:
+\begin{equation}
+    O(R|d, q) = \frac{P(R|d, q)}{P(\bar{R}|d, q)} = \frac{P(d|R, q) P(R|q)}{P(d|\bar{R}, q) P(\bar{R}|q)}
+\end{equation}
+
+Để tính toán $P(d|R, q)$, hệ thống phân rã tài liệu $d$ thành một tập hợp các đặc trưng rời rạc (thường là các thuật ngữ - terms). Dưới giả định độc lập có điều kiện (Conditional Independence Assumption), tỷ lệ chênh này có thể được biến đổi và tối giản hóa thành hàm trọng số thuật ngữ. Quá trình phát triển này đã dẫn đến sự ra đời của TF-IDF và sau đó là sự tối ưu hóa tột bậc mang tên Okapi BM25 (Best Matching 25).
+
+\subsubsection{Cấu trúc phương trình Okapi BM25}
+BM25 không phải là một công thức đơn lẻ mà là một họ các hàm tính điểm (scoring functions). Cho một câu truy vấn $Q$ chứa các từ khóa $q_1, q_2, \dots, q_n$, điểm số BM25 của một tài liệu $D$ được định nghĩa bằng tổng trọng số của từng từ khóa xuất hiện trong tài liệu:
+
+\begin{equation}
+    \text{score}(D, Q) = \sum_{i=1}^{n} \text{IDF}(q_i) \cdot \frac{f(q_i, D) \cdot (k_1 + 1)}{f(q_i, D) + k_1 \cdot \left(1 - b + b \cdot \frac{|D|}{\text{avgdl}}\right)}
+\end{equation}
+
+Phương trình này là sự cấu thành tinh tế từ ba thành phần toán học:
+\begin{enumerate}
+    \item \textbf{Tần suất nghịch đảo tài liệu (Inverse Document Frequency - IDF):}
+    \begin{equation}
+        \text{IDF}(q_i) = \ln \left( \frac{N - n(q_i) + 0.5}{n(q_i) + 0.5} + 1 \right)
+    \end{equation}
+    Trong đó, $N$ là tổng số tài liệu trong tập dữ liệu, và $n(q_i)$ là số tài liệu chứa từ khóa $q_i$. Giá trị $+0.5$ là hằng số làm mượt (smoothing constant) giúp tránh lỗi chia cho không và điều chỉnh biên độ phạt của các từ khóa quá phổ biến (như stop-words). IDF đảm bảo rằng các từ khóa hiếm (ví dụ: mã phòng "VIP-102") sẽ đóng góp một trọng số khổng lồ vào tổng điểm, khắc phục trực tiếp hiện tượng Keyword Mismatch của Dense Vector.
+
+    \item \textbf{Độ bão hòa tần suất thuật ngữ (Term Frequency Saturation):} 
+    Thành phần $\frac{f(q_i, D) \cdot (k_1 + 1)}{f(q_i, D) + k_1}$ điều chỉnh ảnh hưởng của tần suất từ khóa $f(q_i, D)$ trong tài liệu. Khác với TF truyền thống tăng tuyến tính, BM25 sử dụng tham số $k_1$ (thường $k_1 \in [1.2, 2.0]$) để thiết lập một đường cong tiệm cận. Nếu một từ khóa xuất hiện quá nhiều lần, điểm số sẽ bão hòa ở mức $k_1 + 1$, ngăn chặn một tài liệu bị "bơm phồng" điểm số chỉ vì lặp lại một từ vô nghĩa.
+
+    \item \textbf{Chuẩn hóa chiều dài tài liệu (Document Length Normalization):}
+    Thành phần $\left(1 - b + b \cdot \frac{|D|}{\text{avgdl}}\right)$ bù trừ cho việc các tài liệu dài ($|D|$) tự nhiên chứa nhiều từ hơn các tài liệu ngắn. Tham số $b \in [0, 1]$ kiểm soát mức độ phạt chiều dài (thường $b = 0.75$). Nếu $b=1$, thuật toán chuẩn hóa hoàn toàn theo chiều dài; nếu $b=0$, thuật toán bỏ qua chiều dài tài liệu.
+\end{enumerate}
+
+\subsubsection{Không gian Trực giao và Kiến trúc Tìm kiếm Lai (Hybrid Search)}
+Do Dense Embedding hoạt động trong không gian liên tục (liên kết ngữ nghĩa, quan hệ từ vựng ẩn) và BM25 hoạt động trong không gian rời rạc thưa thớt (khớp định danh chính xác), hai phương pháp này cung cấp các tín hiệu gần như trực giao (orthogonal signals) trong Không gian Thông tin. 
+
+Sự kết hợp của chúng tạo ra \textbf{Hybrid Search}. Khi truy vấn được hệ thống thực thi, nó khởi chạy hai luồng song song trên cơ sở dữ liệu (ví dụ: qua thuật toán HNSW cho không gian vector và Inverted Index cho BM25). Kết quả trả về là hai tập danh sách tài liệu $R_{dense}$ và $R_{sparse}$ với các phân phối điểm số hoàn toàn khác nhau. Điểm Cosine giới hạn trong $[-1, 1]$, trong khi điểm BM25 không có giới hạn trên (unbounded). Điều này đặt ra một bài toán toán học mới: Làm thế nào để hợp nhất hai không gian điểm số không đồng nhất?
+
+\subsubsection{Định lý gộp hạng và Thuật toán Reciprocal Rank Fusion (RRF)}
+Phương pháp cơ bản nhất để kết hợp là gộp lồi (Convex Combination): $S_{hybrid} = \alpha \cdot S_{dense} + (1 - \alpha) \cdot S_{sparse}$. Tuy nhiên, phương pháp này đòi hỏi việc chuẩn hóa điểm (Score Normalization) cực kỳ phức tạp và dễ bị sai lệch do sự biến thiên của phân phối dữ liệu (Distribution Shift).
+
+Để đạt được sự hợp nhất vững chãi (Robust Fusion) không cần tinh chỉnh trọng số $\alpha$, đồ án ứng dụng \textbf{Thuật toán Reciprocal Rank Fusion (RRF)} (Cormack et al., 2009). Thay vì phụ thuộc vào giá trị điểm số tuyệt đối, RRF khai thác thông tin thứ hạng (Ordinal Rank). Hàm tính điểm RRF cho một tài liệu $d$ được định nghĩa như sau:
+
+\begin{equation}
+    \text{RRF\_Score}(d) = \sum_{r \in \mathcal{R}} \frac{1}{k + r(d)}
+\end{equation}
+
+Trong đó:
+\begin{itemize}
+    \item $\mathcal{R}$ là tập hợp các hệ thống xếp hạng (trong trường hợp này $\mathcal{R} = \{Dense, Sparse\}$).
+    \item $r(d)$ là thứ hạng nguyên dương của tài liệu $d$ trong hệ thống $r$. (Nếu $d$ không xuất hiện, $r(d) \rightarrow \infty$, phân số tiến về 0).
+    \item $k$ là hằng số làm mượt nghịch đảo. Cormack et al. chứng minh thông qua thực nghiệm trên tập dữ liệu TREC (Text REtrieval Conference) rằng $k=60$ cung cấp sự phân bố suy giảm phi tuyến tối ưu nhất.
+\end{itemize}
+
+\textbf{Phân tích độ dốc của RRF:} 
+Đạo hàm của hàm phân bổ điểm RRF theo thứ hạng $r$ là $-\frac{1}{(k+r)^2}$. Với $k=60$, sự khác biệt điểm số giữa top 1 ($1/61 \approx 0.0163$) và top 2 ($1/62 \approx 0.0161$) là cực kỳ nhỏ. Hàm này \textbf{phạt rất nặng} những tài liệu chỉ xuất hiện ở một danh sách (ngay cả khi nó đứng top 1), nhưng \textbf{thưởng rất lớn} cho sự đồng thuận (Consensus). Một tài liệu lọt vào top 10 ở cả BM25 và Dense Search sẽ nhận được điểm tổng $2 \times \frac{1}{70} \approx 0.0285$, dễ dàng vượt qua một tài liệu đứng top 1 ở Dense nhưng bị đánh rớt xuống top 100 ở BM25 ($ \frac{1}{61} + \frac{1}{160} \approx 0.0226$). 
+
+Chính cơ chế phạt tỷ lệ nghịch này khiến RRF trở thành thuật toán lý tưởng cho bài toán đặt lịch trình du lịch: Hệ thống AI sẽ luôn ưu tiên các chính sách và khách sạn \textit{vừa có ngữ nghĩa phù hợp} với mong muốn của khách hàng, \textit{vừa chứa chính xác mã phòng/tên dịch vụ} mà họ đã nhập, triệt tiêu hoàn toàn sự "ngây ngô" của Native RAG.

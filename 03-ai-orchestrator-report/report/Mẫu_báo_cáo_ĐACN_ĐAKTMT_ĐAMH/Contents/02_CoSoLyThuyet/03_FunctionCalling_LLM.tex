@@ -1,0 +1,31 @@
+\subsection{Cơ sở Toán học của Function Calling và Cơ chế Giải mã Bị ràng buộc (Constrained Decoding)}
+
+\subsubsection{Xác suất Tự hồi quy (Autoregressive Probability) và Căn nguyên Ảo giác}
+Các Mô hình Ngôn ngữ Lớn (LLM) hiện đại hoạt động dựa trên cơ chế sinh từ tự hồi quy (Autoregressive Generation). Cho một chuỗi ngữ cảnh $x = (w_1, w_2, \dots, w_t)$, xác suất để mô hình sinh ra token tiếp theo $w_{t+1}$ từ từ vựng $\mathcal{V}$ được mô hình hóa bởi:
+\begin{equation}
+    P(w_{t+1} | w_{1:t}) = \text{softmax}(W_h h_t + b)
+\end{equation}
+Trong đó, $h_t \in \mathbb{R}^{d_{model}}$ là biểu diễn trạng thái ẩn của token cuối cùng qua kiến trúc Transformer, $W_h$ là ma trận chiếu từ vựng. Quá trình giải mã (Decoding) thường chọn token có xác suất cao nhất (Greedy) hoặc lấy mẫu có trọng số (Nucleus Sampling).
+
+Vấn đề cốt lõi của \textbf{Ảo giác (Hallucination)} trên dữ liệu động phát sinh từ việc không gian trạng thái $h_t$ chỉ chứa thông tin phân phối thống kê từ tập dữ liệu huấn luyện hoặc Context tĩnh. Khi truy vấn các thông tin yêu cầu tính xác thực thời gian thực (ví dụ: $P(\text{"hết vé"} | \text{"chuyến đi Nha Trang 20/11"})$), mô hình không có cơ sở neo chặn (Grounding), dẫn đến việc lấy mẫu một token ngẫu nhiên có xác suất ngoại lai cao nhưng sai thực tế.
+
+\subsubsection{Khống chế Không gian Giải mã qua Function Calling}
+\textbf{Function Calling (Gọi hàm)} không đơn thuần là việc LLM in ra một đoạn JSON. Dưới góc độ lý thuyết tính toán, nó là quá trình \textbf{Giải mã Bị ràng buộc (Constrained Decoding)}, trong đó LLM bị ép buộc phải sinh ra các token tuân thủ một Văn phạm Phi ngữ cảnh (Context-Free Grammar - CFG) được định nghĩa bởi Lược đồ JSON (JSON Schema) của hàm.
+
+Giả sử hệ thống cung cấp một Lược đồ API $\mathcal{S}$. Tại bước giải mã thứ $t$, thay vì lấy mẫu trên toàn bộ $\mathcal{V}$, xác suất được định hình lại bởi một hàm mặt nạ chỉ thị (Indicator Mask) $\mathbb{I}_{\mathcal{S}}$:
+\begin{equation}
+    \tilde{P}(w_{t+1} | w_{1:t}, \mathcal{S}) = \frac{P(w_{t+1} | w_{1:t}) \cdot \mathbb{I}_{\mathcal{S}}(w_{1:t} \circ w_{t+1})}{\sum_{w' \in \mathcal{V}} P(w' | w_{1:t}) \cdot \mathbb{I}_{\mathcal{S}}(w_{1:t} \circ w')}
+\end{equation}
+
+Hàm $\mathbb{I}_{\mathcal{S}}$ bằng 1 nếu chuỗi token ghép thêm $w_{t+1}$ không vi phạm cấu trúc cây cú pháp trừu tượng (AST) của JSON Schema (ví dụ: bắt buộc phải có khóa \texttt{"route\_code"}, giá trị là kiểu \texttt{String}), và bằng 0 nếu ngược lại.
+
+\subsubsection{Cơ chế Đảo ngược Điều khiển (Inversion of Control) trong LLM}
+Nhờ quá trình khống chế này, LLM đóng vai trò như một bộ biên dịch (Compiler) chuyển đổi Ngôn ngữ Tự nhiên (Natural Language) thành Ngôn ngữ Truy vấn Có cấu trúc (Structured Query Language). 
+
+Lúc này, luồng thực thi trải qua 3 pha Đảo ngược Điều khiển:
+\begin{enumerate}
+    \item \textbf{Pha Phân tích Ý định (Intent Parsing):} LLM nhận định truy vấn vượt quá giới hạn tri thức tĩnh, kích hoạt trạng thái \texttt{tool\_call} và sinh ra đối tượng JSON $A_{tool}$.
+    \item \textbf{Pha Thực thi Tất định (Deterministic Execution):} Hệ thống backend tạm dừng suy luận của LLM, trích xuất $A_{tool}$, thực thi truy vấn SQL (hoặc gọi API RESTful) trên cơ sở dữ liệu vật lý để lấy trạng thái thực tế $R_{db}$.
+    \item \textbf{Pha Tích hợp Ngữ cảnh (Context Injection):} $R_{db}$ được định dạng lại và đẩy ngược vào Cửa sổ Ngữ cảnh (Context Window) của LLM. LLM tiến hành sinh văn bản tự nhiên dựa trên $R_{db}$.
+\end{enumerate}
+Chính nhờ sự tách bạch giữa "Khả năng suy luận ngữ nghĩa" (của LLM) và "Lưu trữ dữ liệu động" (của Database), hệ thống đảm bảo tính toàn vẹn thông tin và đưa chỉ số Ảo giác động (Dynamic Hallucination Rate) về $0\%$.

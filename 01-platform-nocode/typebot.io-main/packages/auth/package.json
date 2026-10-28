@@ -1,0 +1,43 @@
+{
+  "name": "@typebot.io/auth",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./*": {
+      "types": "./src/*.ts",
+      "import": "./src/*.ts",
+      "default": "./src/*.ts"
+    },
+    "./package.json": "./package.json"
+  },
+  "nx": {
+    "targets": {
+      "test": {
+        "executor": "@nx/vitest:test",
+        "outputs": [
+          "{options.reportsDirectory}"
+        ],
+        "options": {
+          "configFile": "{projectRoot}/vitest.config.ts",
+          "project": "@typebot.io/auth",
+          "reportsDirectory": "../../coverage/packages/auth"
+        }
+      }
+    }
+  },
+  "dependencies": {
+    "effect": "4.0.0-beta.38",
+    "@typebot.io/env": "workspace:*",
+    "@upstash/ratelimit": "^0.4.3",
+    "next-auth": "^5.0.0-beta.30",
+    "@typebot.io/user": "workspace:*",
+    "@typebot.io/lib": "workspace:*",
+    "@typebot.io/prisma": "workspace:*",
+    "@typebot.io/telemetry": "workspace:*",
+    "@typebot.io/config": "workspace:*"
+  },
+  "devDependencies": {
+    "vitest": "^4.0.18"
+  }
+}

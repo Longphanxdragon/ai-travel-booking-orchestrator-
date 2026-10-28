@@ -1,0 +1,63 @@
+\documentclass[12pt,a4paper]{report}
+\usepackage[utf8]{inputenc}
+\usepackage[T5]{fontenc}
+\usepackage[vietnamese]{babel}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{geometry}
+\geometry{a4paper, margin=1in}
+\usepackage{titlesec}
+\usepackage{setspace}
+\setstretch{1.3}
+
+\title{\textbf{BÁO CÁO ĐỒ ÁN TỐT NGHIỆP - KHOA HỌC MÁY TÍNH}\\[1cm] 
+\Large Ứng dụng Hybrid Search, Function Calling và Multi-Agent nhằm giải quyết bài toán ảo giác, sai lệch từ khóa và ràng buộc chéo trong tư vấn đặt xe khách và khách sạn}
+\author{\textbf{Sinh viên thực hiện:} [Tên của bạn] \\ 
+\textbf{Giảng viên hướng dẫn:} [Tên Giảng viên]}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+Nghiệp vụ tư vấn và đặt chỗ (Booking) kết hợp giữa Xe khách và Khách sạn tồn tại nhiều khó khăn đặc thù: Dữ liệu biến động từng giây, sai lệch từ khóa tìm kiếm (Keyword Mismatch) và ràng buộc thời gian chéo. Đồ án này đi sâu vào việc giải quyết các khó khăn đó thông qua sự kết hợp của các "công nghệ nhỏ" mũi nhọn: Sử dụng Function Calling (Tool Use) để khắc phục triệt để ảo giác (Hallucination) trên dữ liệu động; Áp dụng Hybrid Search (BM25 + Dense) để truy xuất chính xác mã phòng/tên nhà xe; và tích hợp cơ chế Multi-Agent để xử lý bài toán đối khớp ràng buộc lịch trình.
+\end{abstract}
+
+\tableofcontents
+
+\chapter{Mở đầu}
+
+\section{Đặt vấn đề: Các khó khăn cụ thể trong nghiệp vụ Đặt xe và Khách sạn}
+Hệ thống tư vấn tự động trong ngành du lịch đang gặp 3 rào cản lớn:
+\begin{enumerate}
+    \item \textbf{Đóng băng dữ liệu (Data Cutoff):} Tồn kho vé xe và khách sạn thay đổi liên tục. RAG truyền thống không thể đọc dữ liệu SQL thời gian thực, dẫn đến chốt sai đơn.
+    \item \textbf{Độ chính xác của từ khóa:} Khách hàng thường hỏi đích danh "Phòng Deluxe" hoặc "Xe Limousine 9 chỗ". Tìm kiếm ngữ nghĩa (Dense Vector) thường hoạt động kém hiệu quả với từ khóa exact-match.
+    \item \textbf{Ràng buộc chéo (Cross-Constraint):} Thời gian xe đến phải đồng bộ với giờ Check-in khách sạn, tạo thành một bài toán thỏa mãn ràng buộc (CSP) cực kỳ phức tạp cho quá trình lên kế hoạch (Planning) của hệ thống.
+\end{enumerate}
+
+\section{Mục tiêu nghiên cứu}
+Đồ án không hướng tới việc xây dựng một hệ thống AI chung chung, mà tập trung nghiên cứu hiệu quả của các "công nghệ nhỏ" (Micro-technologies) để giải quyết trực diện 3 khó khăn trên.
+
+\chapter{Cơ sở lý thuyết và Giải pháp Kỹ thuật}
+\section{Giải quyết Khó khăn 1 bằng Function Calling}
+Phân tích cơ chế Agentic Tool Use, cho phép LLM tự động dịch ý định người dùng thành truy vấn SQL/API tới hệ thống PMS (Property Management) để kiểm tra phòng/vé trống thực tế, xóa bỏ hoàn toàn rủi ro ảo giác.
+
+\section{Giải quyết Khó khăn 2 bằng Hybrid Search}
+Trình bày thuật toán BM25 và Sparse Retrieval, kết hợp với Dense Vector qua Reciprocal Rank Fusion (RRF) nhằm tăng độ chính xác lên 100\% khi khách hàng truy vấn mã phòng hoặc tên nhà xe cụ thể.
+
+\section{Giải quyết Khó khăn 3 bằng Multi-Agent Orchestration}
+Xây dựng luồng Chain-of-Thought (CoT) cho phép Agent điều phối (Orchestrator) tự động gọi chéo API của Nhà xe và API Khách sạn, tự suy luận để tìm ra cấu hình thời gian khớp nhất trước khi sinh phản hồi cho người dùng.
+
+\chapter{Thực nghiệm và Đánh giá (Evaluation)}
+\section{Đo lường độ hiệu quả của từng "Công nghệ nhỏ"}
+Thiết kế các kịch bản kiểm thử (Test cases) tách biệt để đo lường: Độ giảm thiểu ảo giác nhờ Function Calling, và Độ chính xác truy xuất nhờ Hybrid Search (sử dụng RAGAS Framework).
+
+\chapter{Xây dựng Ứng dụng Thực tế}
+\section{Quy trình Tư vấn và Đặt chỗ (End-to-End)}
+Triển khai hệ thống vào thực tế: AI đón khách từ kênh chat (Chatwoot), tư vấn bằng dữ liệu đã xử lý, và điều hướng đến Web Form (Typebot) để thanh toán tự động.
+
+\chapter{Kết luận}
+Nghiên cứu khẳng định: Việc tinh chỉnh và kết hợp các công nghệ nhỏ chuyên biệt (Function Calling, Hybrid Search) tạo ra sự khác biệt sống còn trong việc giải quyết khó khăn thực tiễn của ngành du lịch vận tải, mở ra khả năng tự động hóa nghiệp vụ cao cấp.
+
+\end{document}

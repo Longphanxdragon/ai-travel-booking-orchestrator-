@@ -1,0 +1,186 @@
+version: '3.8'
+
+services:
+  # ===========================================================================
+  # 🚀 [PLAN A - PROFILE: nocode] HỆ SINH THÁI MÌ ĂN LIỀN MVP (SALES & REVENUE)
+  # Khởi chạy bằng lệnh: docker compose --profile nocode up -d
+  # ===========================================================================
+
+  # 1. N8N WORKFLOW AUTOMATION ENGINE (Trạm trung chuyển dữ liệu & AI Key Pool)
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: retail_n8n
+    restart: always
+    profiles: ["nocode"]
+    ports:
+      - "5678:5678"
+    environment:
+      - N8N_HOST=n8n.your-domain.com
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - NODE_ENV=production
+      - WEBHOOK_URL=http://n8n:5678/
+      - GENERIC_TIMEZONE=Asia/Ho_Chi_Minh
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - ./03-shared-contracts:/shared-contracts:ro
+    networks:
+      - retail_net
+
+  # 2. CHATWOOT OMNICHANNEL CRM (Tạo nhiều Inbox cho Fanpage FB, Zalo OA)
+  chatwoot_rails:
+    image: chatwoot/chatwoot:latest
+    container_name: retail_chatwoot_web
+    restart: always
+    profiles: ["nocode"]
+    ports:
+      - "3000:3000"
+    environment:
+      - RAILS_ENV=production
+      - SECRET_KEY_BASE=replace-with-super-secret-key-in-production
+      - FRONTEND_URL=http://localhost:3000
+      - REDIS_URL=redis://chatwoot_redis:6379
+      - POSTGRES_DATABASE=chatwoot_production
+      - POSTGRES_HOST=chatwoot_postgres
+      - POSTGRES_USERNAME=postgres
+      - POSTGRES_PASSWORD=postgres_secret_password
+    depends_on:
+      - chatwoot_postgres
+      - chatwoot_redis
+    networks:
+      - retail_net
+
+  chatwoot_sidekiq:
+    image: chatwoot/chatwoot:latest
+    container_name: retail_chatwoot_sidekiq
+    restart: always
+    profiles: ["nocode"]
+    command: ["bundle", "exec", "sidekiq", "-C", "config/sidekiq.yml"]
+    environment:
+      - RAILS_ENV=production
+      - SECRET_KEY_BASE=replace-with-super-secret-key-in-production
+      - REDIS_URL=redis://chatwoot_redis:6379
+      - POSTGRES_DATABASE=chatwoot_production
+      - POSTGRES_HOST=chatwoot_postgres
+      - POSTGRES_USERNAME=postgres
+      - POSTGRES_PASSWORD=postgres_secret_password
+    depends_on:
+      - chatwoot_postgres
+      - chatwoot_redis
+    networks:
+      - retail_net
+
+  chatwoot_postgres:
+    image: postgres:15-alpine
+    container_name: retail_chatwoot_db
+    restart: always
+    profiles: ["nocode", "microservices"] # Dùng chung DB cho cả 2 Profile
+    environment:
+      - POSTGRES_DB=chatwoot_production
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres_secret_password
+    volumes:
+      - chatwoot_db_data:/var/lib/postgresql/data
+      - ./03-shared-contracts/database-init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - retail_net
+
+  chatwoot_redis:
+    image: redis:7-alpine
+    container_name: retail_chatwoot_redis
+    restart: always
+    profiles: ["nocode", "microservices"] # Dùng chung Redis cho cả 2 Profile
+    volumes:
+      - chatwoot_redis_data:/data
+    networks:
+      - retail_net
+
+  # 3. TYPEBOT FORM BUILDER & VIEWER (Giao diện đặt món động tối ưu cho mobile)
+  typebot_builder:
+    image: baptistelechat/typebot-builder:latest
+    container_name: retail_typebot_builder
+    restart: always
+    profiles: ["nocode"]
+    ports:
+      - "8080:3000"
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres_secret_password@typebot_postgres:5432/typebot_production
+      - NEXTAUTH_URL=http://localhost:8080
+      - NEXTAUTH_SECRET=replace-with-typebot-secret-key
+      - VIEWER_URL=http://localhost:8081
+    depends_on:
+      - typebot_postgres
+    networks:
+      - retail_net
+
+  typebot_viewer:
+    image: baptistelechat/typebot-viewer:latest
+    container_name: retail_typebot_viewer
+    restart: always
+    profiles: ["nocode"]
+    ports:
+      - "8081:3000"
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres_secret_password@typebot_postgres:5432/typebot_production
+      - NEXTAUTH_URL=http://localhost:8081
+      - NEXTAUTH_SECRET=replace-with-typebot-secret-key
+    depends_on:
+      - typebot_postgres
+    networks:
+      - retail_net
+
+  typebot_postgres:
+    image: postgres:15-alpine
+    container_name: retail_typebot_db
+    restart: always
+    profiles: ["nocode"]
+    environment:
+      - POSTGRES_DB=typebot_production
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres_secret_password
+    volumes:
+      - typebot_db_data:/var/lib/postgresql/data
+    networks:
+      - retail_net
+
+  # ===========================================================================
+  # 🔬 [PLAN B - PROFILE: microservices] HỆ THỐNG LÕI HÀN LÂM (ĐỒ ÁN 10 ĐIỂM)
+  # Khởi chạy bằng lệnh: docker compose --profile microservices up -d
+  # ===========================================================================
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: retail_rabbitmq
+    restart: always
+    profiles: ["microservices"]
+    ports:
+      - "5672:5672"   # Cổng kết nối Message Queue
+      - "15672:15672" # Giao diện quản lý Web UI
+    environment:
+      - RABBITMQ_DEFAULT_USER=admin
+      - RABBITMQ_DEFAULT_PASS=admin_secret
+    networks:
+      - retail_net
+
+  qdrant_vector_db:
+    image: qdrant/qdrant:latest
+    container_name: retail_qdrant_vector
+    restart: always
+    profiles: ["microservices"]
+    ports:
+      - "6333:6333"   # Cổng REST API cho RAG Semantic Search
+    volumes:
+      - qdrant_data:/qdrant/storage
+    networks:
+      - retail_net
+
+volumes:
+  n8n_data:
+  chatwoot_db_data:
+  chatwoot_redis_data:
+  typebot_db_data:
+  qdrant_data:
+
+networks:
+  retail_net:
+    driver: bridge

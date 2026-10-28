@@ -1,0 +1,14 @@
+\subsection{Kiến trúc Mạng lưới Đa tác tử (Hierarchical Agent Network)}
+
+Hệ thống được thiết kế theo nguyên lý Phân cấp Kiến trúc (Hierarchical Architecture), nơi một Tác tử trung tâm kiểm soát các Tác tử thực thi lớp dưới. Kiến trúc lõi Tech Core bao gồm các khối thành phần có độ gắn kết cao (High Cohesion) và khớp nối lỏng (Loose Coupling):
+
+\begin{enumerate}
+    \item \textbf{Tầng Giao tiếp Ngoại vi (API Gateway Interface):} Lớp này bọc toàn bộ lõi AI thành một API RESTful FastAPI, chịu trách nhiệm nhận \texttt{session\_id} và câu hỏi từ người dùng (nhận từ Chatwoot/Zalo), đảm bảo tính phi trạng thái (Stateless) cho các request HTTP nhưng duy trì trạng thái hội thoại bên trong đồ thị.
+    \item \textbf{Động cơ Tác tử Lõi (Core Agentic Engine):}
+    \begin{itemize}
+        \item \textbf{Orchestrator Agent (Tác tử Nhạc trưởng):} Không sở hữu bất kỳ hàm (Tool) truy xuất CSDL nào. Nhiệm vụ duy nhất là phân tích Ý định (Intent Classification), Lập kế hoạch (Planning) và Định tuyến (Routing).
+        \item \textbf{Bus Agent (Chuyên gia Xe khách):} Được trang bị các Tools gọi vào API (tương tác PostgreSQL) để truy vấn thông tin giá vé, ghế trống, giờ khởi hành.
+        \item \textbf{Hotel Agent (Chuyên gia Khách sạn):} Được trang bị các Tools kiểm tra phòng trống, phụ thu, và quyền truy cập vào Động cơ Tìm kiếm Lai (Hybrid Search Qdrant) để lấy chính sách hoàn hủy.
+    \end{itemize}
+    \item \textbf{Tầng Bộ nhớ Đồ thị (Graph Memory / Checkpointer):} Sử dụng cơ chế lưu trữ liên tục (Persistent Storage) như SQLite hoặc Redis để lưu lại StateGraph ở mỗi bước chuyển đổi (Checkpointing). Điều này giúp hệ thống hỗ trợ tính năng "Human-in-the-loop" (cho phép con người can thiệp giữa chừng) hoặc phục hồi lại đúng luồng suy luận nếu server bị gián đoạn.
+\end{enumerate}

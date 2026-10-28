@@ -1,0 +1,127 @@
+\section*{Phụ lục}
+\addcontentsline{toc}{section}{Phụ lục}
+
+\subsection*{Phụ lục A: Cấu trúc cơ sở dữ liệu khởi tạo (SQL Schema Migration)}
+Dưới đây là mã lệnh SQL (PostgreSQL 16 với phần mở rộng \texttt{pgvector}) dùng để khởi tạo cấu trúc bảng và chỉ mục cho nền tảng SaaS theo kiến trúc Vi dịch vụ:
+
+\begin{lstlisting}[language=SQL, caption={Mã lệnh khởi tạo DDL (Data Definition Language) cho hệ thống}]
+-- 1. Kich hoat phan mo rong pgvector cho truy xuat RAG
+CREATE EXTENSION IF NOT EXISTS vector;
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+-- 2. Bang bang thong tin va trang thai cua hang F&B (Tenants)
+CREATE TABLE IF NOT EXISTS tenants (
+    tenant_id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    status VARCHAR(50) DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE', 'LOCKED', 'MAINTENANCE')),
+    total_orders BIGINT DEFAULT 0,
+    hotline VARCHAR(50),
+    telegram_chat_id VARCHAR(100),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 3. Bang lich su giao dich don hang (Order Logs)
+CREATE TABLE IF NOT EXISTS order_logs (
+    order_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    tenant_id INTEGER NOT NULL REFERENCES tenants(tenant_id) ON DELETE CASCADE,
+    order_code VARCHAR(100) NOT NULL,
+    customer_name VARCHAR(255),
+    customer_phone VARCHAR(50),
+    total_amount BIGINT NOT NULL CHECK (total_amount >= 0),
+    status VARCHAR(50) DEFAULT 'COMPLETED',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 4. Bang thuc don va vector ngu nghia (Menu Items & Embeddings)
+CREATE TABLE IF NOT EXISTS menu_items (
+    item_id SERIAL PRIMARY KEY,
+    tenant_id INTEGER NOT NULL REFERENCES tenants(tenant_id) ON DELETE CASCADE,
+    item_name VARCHAR(255) NOT NULL,
+    price BIGINT NOT NULL,
+    description TEXT,
+    embedding VECTOR(384) NOT NULL,
+    is_available BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 5. Tao cac chi muc (Indexes) toi uu hieu nang truy van
+CREATE INDEX IF NOT EXISTS idx_tenants_status ON tenants(tenant_id, status);
+CREATE INDEX IF NOT EXISTS idx_orders_tenant ON order_logs(tenant_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_menu_vectors ON menu_items 
+USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100);
+
+-- 6. Du lieu mau (Seed Data) kiem thu he thong
+INSERT INTO tenants (tenant_id, name, status, hotline) 
+VALUES 
+(101, 'Tiệm Cơm Sườn Bì Chả Sài Gòn', 'ACTIVE', '0901234567'),
+(102, 'Chuỗi Cà Phê AI RAG Express', 'ACTIVE', '0909888999')
+ON CONFLICT (tenant_id) DO NOTHING;
+\end{lstlisting}
+
+\subsection*{Phụ lục B: Kịch bản kiểm thử tải trọng Locust (\texttt{locustfile.py})}
+Mã nguồn chương trình kiểm thử hiệu năng bằng Locust, giả lập 500 khách hàng liên tục gửi đơn đặt hàng và tra cứu thực đơn với lưu lượng đạt đỉnh $> 1.000$ đơn/phút:
+
+\begin{lstlisting}[language=Python, caption={Kịch bản Python giả lập tải cao gửi về \texttt{omni-gateway-service}}]
+import json
+import time
+import hmac
+import hashlib
+import random
+from locust import HttpUser, task, between, events
+
+SECRET_KEY = b"enterprise_saas_secret_key_2026"
+
+class OmnichannelShopperUser(HttpUser):
+    wait_time = between(0.1, 0.5) # Gia lap user nhan tin lien tuc
+    
+    def _generate_hmac_header(self, payload_dict: dict) -> dict:
+        body_bytes = json.dumps(payload_dict).encode("utf-8")
+        sig = "sha256=" + hmac.new(SECRET_KEY, body_bytes, hashlib.sha256).hexdigest()
+        return {"Content-Type": "application/json", "X-Hub-Signature": sig}
+        
+    @task(3)
+    def simulate_menu_inquiry(self):
+        """Gia lap luong hoi dap thuc don AI RAG"""
+        questions = [
+            "Quán có món cơm sườn nào không cay cho trẻ em không?",
+            "Cho mình xin bảng giá đồ uống lạnh buổi sáng",
+            "Món bán chạy nhất của quán hôm nay là gì?"
+        ]
+        payload = {
+            "tenant_id": random.choice([101, 102]),
+            "sender_id": f"fb_user_{random.randint(1000, 9999)}",
+            "message_type": "INQUIRY",
+            "content": random.choice(questions)
+        }
+        headers = self._generate_hmac_header(payload)
+        
+        with self.client.post("/api/v1/webhook/ingest", json=payload, headers=headers, catch_response=True) as resp:
+            if resp.status_code in [200, 202]:
+                resp.success()
+            else:
+                resp.failure(f"Inquiry failed with status {resp.status_code}")
+
+    @task(7)
+    def simulate_order_submission(self):
+        """Gia lap luong chot don hang vao RabbitMQ (> 1000 don/phut)"""
+        order_payload = {
+            "order_code": f"ORD-{int(time.time())}-{random.randint(10, 99)}",
+            "items": [{"name": "Cơm sườn đặc biệt", "qty": 2, "price": 50000}],
+            "total_amount": 100000,
+            "customer_phone": "0901234567"
+        }
+        payload = {
+            "tenant_id": 101,
+            "sender_id": f"zalo_user_{random.randint(10000, 99999)}",
+            "message_type": "ORDER",
+            "content": json.dumps(order_payload)
+        }
+        headers = self._generate_hmac_header(payload)
+        
+        with self.client.post("/api/v1/webhook/ingest", json=payload, headers=headers, catch_response=True) as resp:
+            if resp.status_code == 202:
+                resp.success()
+            else:
+                resp.failure(f"Order submission failed: {resp.status_code}")
+\end{lstlisting}

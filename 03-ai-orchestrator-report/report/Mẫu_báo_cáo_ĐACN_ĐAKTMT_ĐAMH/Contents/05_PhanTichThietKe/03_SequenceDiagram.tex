@@ -1,0 +1,24 @@
+\subsection{Sơ đồ tuần tự (Sequence Diagram) luồng Điều phối Đa tác tử}
+
+Quá trình tương tác phức tạp giữa Khách hàng, Nhạc trưởng, Các Chuyên gia và Cơ sở dữ liệu được đặc tả qua sơ đồ tuần tự mang tính phi tuyến tính (Non-linear Sequence):
+
+\begin{enumerate}
+    \item \textbf{[Trigger]} Khách hàng gửi truy vấn: \textit{"Tìm xe giường nằm đi Nha Trang tối mai và khách sạn nào nhận phòng 5h sáng."}
+    \item \textbf{[Orchestrator Tự suy luận - CoT]} 
+    \begin{itemize}
+        \item Phân tích bước 1: Cần tìm xe tối mai trước.
+        \item Cập nhật State: \texttt{next\_agent = "bus\_expert"}.
+    \end{itemize}
+    \item \textbf{[Routing]} Đồ thị chuyển quyền (Control Flow) sang \texttt{Bus Agent}.
+    \item \textbf{[Function Calling]} \texttt{Bus Agent} sinh yêu cầu gọi Tool \texttt{check\_bus(date="tomorrow", type="sleeper")}.
+    \item \textbf{[Database Integration]} Node \texttt{Tools} thực thi hàm, truy vấn PostgreSQL, lấy kết quả số ghế trống và giờ đến, bơm lại cho \texttt{Bus Agent}.
+    \item \textbf{[Return Control]} \texttt{Bus Agent} phân tích kết quả, cập nhật \texttt{booking\_context} và trả quyền về \texttt{Orchestrator}.
+    \item \textbf{[Orchestrator Nhận định]}
+    \begin{itemize}
+        \item Đọc State, nhận thấy xe tới lúc 5h sáng.
+        \item Phân tích bước 2: Tìm khách sạn hỗ trợ Early Check-in.
+        \item Cập nhật State: \texttt{next\_agent = "hotel\_expert"}.
+    \end{itemize}
+    \item \textbf{[Routing \& Hybrid Search]} Khối \texttt{Hotel Agent} nhận quyền, gọi Tool \texttt{search\_policy}. Qdrant thực thi Hybrid Search gộp RRF, trả về chính sách phụ thu 50\% nếu nhận phòng 5h.
+    \item \textbf{[Synthesis]} Quyền quay về \texttt{Orchestrator}. Kế hoạch hoàn tất. Đồ thị điều hướng sang \texttt{END}. Câu trả lời cuối cùng được xuất ngược ra API cho khách hàng một cách chính xác tuyệt đối mà không hề bị ảo giác.
+\end{enumerate}
