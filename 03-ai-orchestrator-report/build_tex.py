@@ -138,11 +138,11 @@ content_hien_thuc = r"""\section{Hiện thực hệ thống}
 
 \subsection{Hiện thực Khóa bi quan ACID}
 \begin{lstlisting}[language=Python, title=Trích xuất mã nguồn khóa ACID]
-lock_query = text("""
+lock_query = text('''
     SELECT tenant_id, available_rooms 
     FROM hotel_inventories 
     WHERE room_id = :rid FOR UPDATE
-""")
+''')
 res = await session.execute(lock_query, {"rid": room_id})
 # Tien hanh tru ton kho va COMMIT
 \end{lstlisting}
