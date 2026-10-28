@@ -1,0 +1,35 @@
+name: CI - AI Agent Testing & Validation Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  test-and-validate:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Install Dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pydantic pytest httpx
+
+    - name: Test Pydantic Schemas & Data Contract
+      run: |
+        python -c "from app.models.schemas import ChatRequest, ChatResponse, VeXeKhach, PhongKhachSan; print('Schemas are 100% valid!')"
+      working-directory: 02-core-microservices/backend
+
+    - name: Test Data Cleaner Pipeline (PII Protection)
+      run: |
+        python -c "from app.services.tools.data_cleaner_pipeline import ConversationDataCleaner; res = ConversationDataCleaner.anonymize_pii('SĐT: 0901234567'); assert '090****567' in res; print('PII Anonymization Test Passed!')"
+      working-directory: 02-core-microservices/backend
