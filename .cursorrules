@@ -1,0 +1,9 @@
+# Cursor Rules for AI Travel Booking Orchestrator
+# Bắt buộc tuân thủ 100% khi sinh code trong Cursor
+
+- Always read `AGENTS.md` and `PROJECT_STATE_SNAPSHOT.md` before making architectural decisions.
+- Do NOT break existing schemas in `02-core-microservices/backend/app/models/schemas.py`.
+- All database queries must reflect real-time constraints; never hallucinate dynamic inventory in prompts.
+- Ensure all tests pass with `pytest tests/test_core_system.py` before completing a task.
+- When generating Python code, always use Python 3.11+ type hints, Pydantic v2 syntax, and asynchronous functions (`async/await`).
+- Keep code clean, modular, and adhere to the single-responsibility principle.
