@@ -1,0 +1,11 @@
+\subsection{Bài toán Dữ liệu tĩnh (Static Data) - Tiền đề của Hybrid Search}
+Trong nghiệp vụ tư vấn lưu trú và di chuyển, Dữ liệu tĩnh bao gồm các văn bản cẩm nang du lịch, chính sách hoàn hủy, tiện ích khách sạn, và thông tin giới thiệu nhà xe. Đặc thù của loại dữ liệu này là ít thay đổi nhưng rất giàu về ngữ nghĩa và thường xuyên chứa các mã định danh đặc biệt.
+
+\textbf{Ví dụ Dữ liệu tĩnh:}
+\begin{itemize}
+    \item \textbf{Khách sạn A:} "Quy định hoàn hủy: Miễn phí trước 48h. Nhận thú cưng dưới 5kg với phụ phí 200.000 VNĐ. Có mã phòng gia đình FAM-OC-99."
+    \item \textbf{Nhà xe B:} "Nhà xe Hải Vân Express, chuyên tuyến Hà Nội - Sapa. Xe cabin đôi tình yêu."
+\end{itemize}
+
+\textbf{Phân tích độ khó:} Khi khách hàng hỏi \textit{"Cho tôi đặt phòng FAM-OC-99 có mang theo mèo 3kg"}, nếu chỉ dùng Vector Search (tìm theo ý nghĩa), AI có thể bỏ sót điều kiện "dưới 5kg" hoặc nhầm mã phòng "FAM-OC-99" thành một mã phòng tương tự. 
+Do đó, yêu cầu kỹ thuật đặt ra là hệ thống phải sử dụng \textbf{Hybrid Search}. Trong đó, Dense Vector đảm nhận phần hiểu ngữ cảnh ("mèo 3kg" = "thú cưng dưới 5kg"), còn Sparse Vector (BM25) chịu trách nhiệm bắt chính xác mã phòng "FAM-OC-99".

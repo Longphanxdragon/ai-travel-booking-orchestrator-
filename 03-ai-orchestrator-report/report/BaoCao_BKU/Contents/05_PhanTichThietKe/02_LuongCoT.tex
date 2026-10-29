@@ -1,0 +1,33 @@
+\subsection{Luồng Suy luận CoT (Chain-of-Thought) giải quyết Ràng buộc chéo}
+
+Giả định Kịch bản (Scenario): \textit{Khách hàng yêu cầu "Đặt xe đêm từ SG đi Nha Trang ngày 15/10 và khách sạn sát biển 2 đêm. Muốn tới nơi là có phòng ngủ ngay."}
+
+Quá trình giải quyết được chia thành 4 bước suy luận thông qua Đồ thị Tác tử:
+
+\textbf{Bước 1: Phân tích Ý định (Intent Parsing \& Planning - Orchestrator)}
+\begin{itemize}
+    \item Orchestrator nhận yêu cầu. Áp dụng CoT, nó tự độc thoại nội tâm (Inner Monologue): \textit{"Khách muốn xe đêm ngày 15/10 $\rightarrow$ tới Nha Trang sáng 16/10. Khách muốn có phòng ngủ ngay $\rightarrow$ Khách sạn phải hỗ trợ Early Check-in sáng 16/10. Mình cần hỏi Bus Agent tìm chuyến xe đêm trước để chốt giờ đến."}
+    \item Orchestrator cập nhật Kế hoạch vào State và chuyển quyền điều khiển (Route) sang Bus Agent.
+\end{itemize}
+
+\textbf{Bước 2: Truy vấn Thời gian thực (Function Calling - Bus Agent)}
+\begin{itemize}
+    \item Bus Agent nhận quyền điều khiển. Dựa trên State, nó phân tích và quyết định gọi Tool: \texttt{search\_bus(route="SG-NT", date="2026-10-15", time="night")}.
+    \item API chọc vào Database PostgreSQL, trả về kết quả: Chuyến xe khởi hành 21:00, dự kiến tới Nha Trang lúc 05:00 sáng.
+    \item Bus Agent lưu thông tin \textit{"Đến nơi lúc 05:00 ngày 16/10"} vào State và kết thúc lượt, trả quyền về Orchestrator.
+\end{itemize}
+
+\textbf{Bước 3: Đàm phán và Lập lịch chéo (Hotel Agent)}
+\begin{itemize}
+    \item Orchestrator nhận lại quyền, đọc State thấy "Tới lúc 05:00". Nó tiếp tục tự suy luận: \textit{"Cần tìm khách sạn sát biển cho ngày 16/10-18/10, nhưng phải cho check-in lúc 05:00 sáng."}
+    \item Orchestrator chuyển quyền cho Hotel Agent kèm theo yêu cầu bắt buộc: \texttt{early\_checkin="05:00"}.
+    \item Hotel Agent gọi Tool: \texttt{search\_hotel(location="Nha Trang", features=["beachfront", "early\_checkin"], checkin\_date="2026-10-16")}.
+    \item Nếu Database Khách sạn trả về \textit{"Không có khách sạn nào cho check-in lúc 5h sáng"}: Hotel Agent sẽ dùng Hybrid Search lục lọi kho cẩm nang chính sách (Dữ liệu tĩnh) để tìm các khách sạn cho phép \textit{"Tính thêm 50\% phí để nhận phòng sớm"}.
+    \item Hotel Agent cập nhật State: \textit{"Tìm được Khách sạn A sát biển, nhưng nhận phòng 5h sáng phụ thu 300K"}. Trả quyền về Orchestrator.
+\end{itemize}
+
+\textbf{Bước 4: Tổng hợp và Ra quyết định (Orchestrator Finalization)}
+\begin{itemize}
+    \item Orchestrator đọc toàn bộ State đã được đắp đầy đủ thông tin thực tế từ 2 chuyên gia (Bus và Hotel).
+    \item Orchestrator tổng hợp văn bản cuối cùng trả lời khách hàng một cách thông minh, không hề có ảo giác: \textit{"Dạ em tìm được chuyến xe đêm đi Nha Trang khởi hành 21h ngày 15/10, tới nơi lúc 5h sáng. Để anh/chị có phòng ngủ ngay khi tới, em đã chọn Khách sạn A sát biển, hỗ trợ nhận phòng sớm lúc 5h sáng (có phụ thu 300k). Tổng lịch trình đã khớp, anh/chị có muốn tiến hành đặt cọc không ạ?"}
+\end{itemize}

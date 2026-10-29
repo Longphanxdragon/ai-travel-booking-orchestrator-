@@ -1,0 +1,25 @@
+\section{Giới thiệu}
+
+\subsection{Bối cảnh nghiên cứu}
+Sự phát triển mạnh mẽ của thương mại điện tử đa kênh (Omnichannel) và du lịch thông minh đặt ra thách thức to lớn về khoa học máy tính trong việc xử lý đồng thời khối lượng lớn tin nhắn và tự động hóa chốt đơn hàng. Trong khi đó, sự ra đời của Mô hình Ngôn ngữ Lớn (LLMs) và Sinh văn bản tăng cường truy xuất (RAG) hứa hẹn mang lại khả năng tư vấn tự nhiên. Tuy nhiên, khi kết hợp nghiệp vụ bán lẻ tải trọng cao và tư vấn lịch trình du lịch phức tạp, các giải pháp truyền thống (Monolithic CRM, No-code) và RAG nguyên bản (Native RAG) bộc lộ những khiếm khuyết chí mạng.
+
+\subsection{Khó khăn và Bài toán đặt ra}
+\begin{enumerate}
+    \item \textbf{Nghẽn cổ chai cơ sở dữ liệu khi tải trọng cao:} Khi lưu lượng vượt ngưỡng 1.000 đơn hàng/phút, kiến trúc Nguyên khối thường cạn kiệt kết nối, khóa bảng (Deadlock), làm sập hệ thống.
+    \item \textbf{Data Cutoff \& Ảo giác dữ liệu động (Dynamic Data Hallucination):} Dữ liệu phòng trống, vé xe thay đổi từng giây. LLM đọc file tĩnh sẽ bị ảo giác, báo sai thông tin tồn kho.
+    \item \textbf{Khớp sai từ khóa ngách (Keyword Mismatch):} Dense Vector Search thường đánh đồng các từ vựng na ná nhau, bỏ sót hoặc nhầm lẫn mã phòng đặc thù, tên nhà xe địa phương.
+    \item \textbf{Ràng buộc chéo về thời gian (Temporal Cross-constraints):} Đặt vé và đặt phòng là chuỗi logic chặt chẽ. AI đơn lẻ (Single-Agent) bị quá tải ngữ cảnh, không có khả năng tự động xử lý logic lập lịch chéo (ví dụ: đổi ngày xe phải đổi ngày phòng).
+\end{enumerate}
+
+\subsection{Mục tiêu nghiên cứu và Các công nghệ lõi}
+Đồ án này nghiên cứu và phát triển \textbf{Nền tảng SaaS quản lý bán lẻ đa kênh tích hợp AI Agentic}, kết hợp sức mạnh của Hệ thống phân tán và Trí tuệ Nhân tạo hiện đại:
+\begin{itemize}
+    \item \textbf{Kiến trúc Microservices \& RabbitMQ:} Đảm bảo chịu tải đỉnh $>1.000$ đơn/phút, cam kết không rớt gói tin (Zero Message Loss).
+    \item \textbf{Giao dịch ACID khóa bi quan:} Bảo đảm tính nhất quán tuyệt đối (100\%) khi nhiều luồng cùng cập nhật tồn kho.
+    \item \textbf{Hybrid Search (BM25 + Dense) \& RRF:} Triệt tiêu điểm mù Keyword Mismatch, đảm bảo truy xuất chính xác 100\% các mã phòng/tên riêng.
+    \item \textbf{Function Calling \& Multi-Agent Orchestration:} Cấp quyền cho AI chọc thẳng vào CSDL thời gian thực, loại bỏ ảo giác. Một Tác tử Điều phối (Orchestrator) sử dụng Chain-of-Thought (CoT) để đàm phán ràng buộc thời gian giữa Tác tử Xe và Tác tử Khách sạn.
+    \item \textbf{Circuit Breaker:} Tự động cô lập máy chủ LLM lỗi và chuyển mạch dự phòng (Failover) dưới 10ms.
+\end{itemize}
+
+\subsection{Đóng góp thực tiễn của Đồ án}
+Đồ án mang lại giải pháp toàn diện từ Tầng Hạ tầng (Microservices, Message Broker) đến Tầng Trí tuệ (Multi-Agent, Hybrid Search), tạo ra một hệ thống Enterprise SaaS chuẩn mực. Kết quả giúp tư vấn chính xác tuyệt đối, giữ chỗ thời gian thực, tự động lập lịch logic và duy trì tính sẵn sàng 99.9\% dưới tải nặng.

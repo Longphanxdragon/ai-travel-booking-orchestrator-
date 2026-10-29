@@ -1,0 +1,36 @@
+\section{Kiến trúc Đa Tác tử (Multi-Agent StateGraph) và Chuỗi Suy luận (CoT)}
+
+\subsection{Hạn chế của Chuỗi Tuần tự (Linear Chains) và Sự cần thiết của StateGraph}
+Các framework phát triển ứng dụng LLM thế hệ đầu (như LangChain Chains cơ bản) tổ chức luồng xử lý theo dạng đường ống tuần tự (Linear DAG: $A \rightarrow B \rightarrow C$). Mô hình này thất bại khi đối mặt với các nghiệp vụ có tính chất lặp lại (Cycles), rẽ nhánh có điều kiện (Conditional Branching), và bảo lưu trạng thái hội thoại phức tạp.
+
+Để giải quyết bài toán đặt Combo du lịch đòi hỏi sự phối hợp giữa hai miền độc lập (Phương tiện và Lưu trú), đề tài sử dụng framework \textbf{LangGraph} dựa trên lý thuyết đồ thị trạng thái hữu hạn (State Machine). 
+
+Đồ thị trạng thái được định nghĩa bởi bộ ba:
+\begin{equation}
+    \mathcal{G} = (\mathcal{V}, \mathcal{E}, \mathcal{S})
+\end{equation}
+Trong đó:
+\begin{itemize}
+    \item $\mathcal{S}$ là Không gian Trạng thái Chung (\textbf{Shared AgentState}), lưu trữ toàn bộ thông điệp hội thoại, các ràng buộc đã thu thập được (điểm đi, điểm đến, ngày giờ, số lượng khách, ngân sách) và trạng thái đối khớp.
+    \item $\mathcal{V}$ là Tập hợp các Tác tử Thành phần (\textbf{Nodes}):
+    \begin{itemize}
+        \item \texttt{OrchestratorAgent}: Tác tử điều phối trung tâm, chịu trách nhiệm phân tích ý định và lập kế hoạch hành động.
+        \item \texttt{BusAgent}: Tác tử chuyên gia về giao thông vận tải, sở hữu công cụ truy vấn vé xe khách thời gian thực.
+        \item \texttt{HotelAgent}: Tác tử chuyên gia về khách sạn, sở hữu công cụ tra cứu phòng và chính sách lưu trú.
+    \end{itemize}
+    \item $\mathcal{E}$ là Tập hợp các Cạnh Chuyển đổi (\textbf{Edges}), bao gồm các cạnh có điều kiện (\textbf{Conditional Edges}) được định tuyến dựa trên trạng thái hiện tại của $\mathcal{S}$.
+\end{itemize}
+
+\subsection{Cơ chế Chuỗi Suy luận (Chain-of-Thought -- CoT) giải quyết Ràng buộc chéo}
+Khi xử lý yêu cầu đặt combo du lịch, Tác tử Orchestrator áp dụng kỹ thuật Chuỗi Suy luận (Chain-of-Thought) để chia nhỏ bài toán thỏa mãn ràng buộc (CSP) thành các bước suy luận logic tường minh:
+\begin{enumerate}
+    \item \textbf{Suy luận Bước 1 (Trích xuất mục tiêu):} Nhận diện khách hàng có nhu cầu di chuyển từ Sài Gòn tới Đà Lạt và nghỉ dưỡng tại Đà Lạt.
+    \item \textbf{Suy luận Bước 2 (Điều phối song song):} Kích hoạt đồng thời \texttt{BusAgent} để tìm chuyến xe Limousine ban đêm và \texttt{HotelAgent} để tìm phòng khách sạn đáp ứng các yêu cầu riêng (ví dụ: cho phép mang thú cưng).
+    \item \textbf{Suy luận Bước 3 (Đối khớp Ràng buộc Thời gian):} 
+    \begin{equation}
+        \Delta T = T_{checkin} - T_{arrival} = 14:00 - 06:15 = 7.75 \text{ giờ}
+    \end{equation}
+    Orchestrator so sánh $\Delta T$ với ngưỡng cho phép $\Delta T_{max} = 3$ giờ. Vì $\Delta T > 3$, Orchestrator kích hoạt quy tắc nghiệp vụ rẽ nhánh: tự động tra cứu chính sách nhận phòng sớm (\texttt{early\_checkin\_fee}) và đưa ra cảnh báo đồng bộ cho khách hàng.
+    \item \textbf{Suy luận Bước 4 (Tổng hợp phản hồi):} Gộp thông tin phương tiện, thông tin phòng và cảnh báo lịch trình thành một thông điệp thống nhất, thân thiện và mạch lạc.
+\end{enumerate}
+Kiến trúc này giúp hệ thống hoạt động như một chuyên viên tư vấn du lịch giàu kinh nghiệm, vượt xa năng lực của các chatbot trả lời câu hỏi đơn lẻ.

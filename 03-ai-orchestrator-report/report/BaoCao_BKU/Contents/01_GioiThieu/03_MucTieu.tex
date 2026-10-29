@@ -1,0 +1,12 @@
+\section{Mục tiêu và Nhiệm vụ nghiên cứu của Đề tài}
+
+\subsection{Mục tiêu tổng quát}
+Đề tài hướng tới việc nghiên cứu, thiết kế và hiện thực hóa một \textbf{Tác tử Trí tuệ Nhân tạo Đa nhiệm (Autonomous Multi-Agent Orchestrator)} chuyên sâu cho lĩnh vực tư vấn và đặt chỗ dịch vụ du lịch (xe khách và lưu trú). Hệ thống giải quyết triệt để 3 bài toán kỹ thuật cốt lõi: triệt tiêu ảo giác trên dữ liệu động thời gian thực, khắc phục sai lệch từ khóa chuyên ngành, và xử lý suy luận đối khớp ràng buộc chéo giữa lịch trình di chuyển và thời gian lưu trú.
+
+\subsection{Các mục tiêu cụ thể}
+\begin{enumerate}
+    \item \textbf{Xây dựng cơ chế Function Calling kết hợp Khóa Bi quan (Pessimistic ACID Locking):} Cho phép LLM tự động chuyển hóa ý định người dùng thành các truy vấn có cấu trúc tới cơ sở dữ liệu thời gian thực (PostgreSQL / API nhà xe), đảm bảo tỷ lệ ảo giác về tồn kho bằng $0\%$.
+    \item \textbf{Phát triển kiến trúc Tìm kiếm Lai (Hybrid Search) với Thuật toán Reciprocal Rank Fusion (RRF):} Kết hợp sức mạnh so khớp từ khóa chính xác của thuật toán BM25 và năng lực thấu hiểu ngữ nghĩa của Dense Vector Embedding, nâng độ chính xác truy xuất chính sách và tên hạng phòng lên trên $95\%$.
+    \item \textbf{Thiết kế Đồ thị Trạng thái Đa Tác tử (Multi-Agent StateGraph) bằng LangGraph:} Xây dựng quy trình suy luận chuỗi ý nghĩ (Chain-of-Thought -- CoT) để tự động hóa việc phát hiện và giải quyết xung đột thời gian giữa phương tiện và nơi lưu trú.
+    \item \textbf{Thiết lập Đường ống Tinh chế Dữ liệu Độc quyền (Data Flywheel Pipeline):} Tự động lọc sạch rác hội thoại, ẩn danh hóa dữ liệu định danh cá nhân (PII Anonymization) theo chuẩn an toàn thông tin nhằm tạo lập tập dữ liệu du lịch độc quyền cho nghiên cứu và thương mại hóa.
+\end{enumerate}

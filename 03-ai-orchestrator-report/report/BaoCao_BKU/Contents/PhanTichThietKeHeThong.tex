@@ -1,0 +1,23 @@
+\section{Phân tích và thiết kế hệ thống}
+
+\subsection{Kiến trúc tổng thể Vi dịch vụ}
+Hệ thống gồm 5 tầng kiến trúc:
+\begin{enumerate}
+    \item \textbf{Tầng Ngoại vi:} Khách hàng chat qua CRM (Zalo/FB).
+    \item \textbf{Tầng Cổng giao tiếp (Gateway):} API Gateway nhận Webhook.
+    \item \textbf{Tầng Hàng đợi Bất đồng bộ:} RabbitMQ làm bộ đệm giảm chấn (Buffer).
+    \item \textbf{Tầng Xử lý Giao dịch:} Các Async Worker thực hiện ACID Locking trên PostgreSQL.
+    \item \textbf{Tầng AI Đa tác tử:} LangGraph quản lý StateGraph. Tích hợp Qdrant cho Hybrid Search.
+\end{enumerate}
+
+\subsection{Đồ thị Trạng thái Đa tác tử (State Graph)}
+Mỗi phiên chat duy trì một \textbf{Shared State} (Biến trạng thái dùng chung).
+Các Nodes là các Agent: \texttt{Orchestrator}, \texttt{Bus\_Agent}, \texttt{Hotel\_Agent}.
+Các Edges là luồng điều khiển. Orchestrator đánh giá State và định tuyến (Conditional Edges) đến tác tử phù hợp.
+
+\subsection{Sơ đồ tuần tự: Xử lý Đơn hàng \& ACID}
+Gateway $\rightarrow$ Publish RabbitMQ $\rightarrow$ Worker Pull $\rightarrow$ \texttt{BEGIN} $\rightarrow$ \texttt{SELECT FOR UPDATE} $\rightarrow$ \texttt{UPDATE} $\rightarrow$ \texttt{COMMIT} $\rightarrow$ \texttt{ACK}.
+
+\subsection{Sơ đồ tuần tự: Multi-Agent \& Circuit Breaker}
+User $\rightarrow$ Orchestrator $\rightarrow$ Bus Agent (Tool Call DB) $\rightarrow$ Orchestrator $\rightarrow$ Hotel Agent.
+Nếu LLM bị lỗi Rate Limit $\rightarrow$ Circuit Breaker cắt mạch $\rightarrow$ Fallback LLM Server 2.

@@ -1,0 +1,8 @@
+\subsection{UC-03: Đàm phán Lịch trình chéo (Multi-Agent)}
+\textbf{Luồng sự kiện:} 
+1. Khách hàng yêu cầu đặt lịch trình xe và khách sạn, muốn check-in ngay khi đến.
+2. Orchestrator Agent lập kế hoạch (CoT), giao quyền cho Bus Agent.
+3. Bus Agent tìm chuyến xe, trả về "Đến nơi lúc 5h sáng" $\rightarrow$ Cập nhật vào Shared State.
+4. Orchestrator gọi Hotel Agent tìm phòng có chính sách "Early check-in 5h sáng".
+5. Hotel Agent gọi Hybrid Search tìm chính sách phụ thu, cập nhật kết quả.
+6. Orchestrator tổng hợp toàn bộ State và trả lời khách hàng một lịch trình hoàn hảo.

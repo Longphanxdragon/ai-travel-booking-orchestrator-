@@ -1,0 +1,12 @@
+\subsection{Hiện thực Hybrid Search \& RRF}
+\begin{lstlisting}[language=Python, title=Truy vấn Hybrid Search với Qdrant]
+prefetch_dense = Prefetch(query=dense_vec, using="dense_embedding", limit=10)
+prefetch_sparse = Prefetch(query=Query(**sparse_vec), using="sparse_bm25", limit=10)
+
+results = qdrant.query_points(
+    collection_name="travel_docs",
+    prefetch=[prefetch_dense, prefetch_sparse],
+    query=Query(fusion="rrf"), # Giai thuat Reciprocal Rank Fusion
+    limit=5,
+)
+\end{lstlisting}

@@ -1,0 +1,16 @@
+\subsection{Đặc tả Ràng buộc chéo và Lập lịch (Cross-constraints)}
+Đây là bài toán khó nhất, yêu cầu khả năng suy luận logic chuỗi (Chain-of-Thought) của AI. 
+
+\textbf{Kịch bản thực tế (User Story):} Khách hàng muốn đi từ TP.HCM lên Đà Lạt và nghỉ tại Khách sạn Mường Thanh trong ngày 20/11. Khách muốn tới nơi là nhận phòng ngay để nghỉ ngơi.
+
+\textbf{Phân tích Ràng buộc Toán học:} 
+Gọi $T_{bus\_arrive}$ là thời gian xe khách dự kiến tới bến Đà Lạt. 
+Gọi $T_{hotel\_checkin}$ là thời gian quy định được nhận phòng khách sạn (Thường là 14:00). 
+Ràng buộc lý tưởng được xác định bởi bất phương trình:
+\begin{equation}
+    T_{hotel\_checkin} - 2h \leq T_{bus\_arrive} \leq T_{hotel\_checkin}
+\end{equation}
+
+Nếu hệ thống kiểm tra và phát hiện chuyến xe duy nhất còn trống của ngày 20/11 sẽ tới nơi lúc 05:00 sáng, thì hệ thống AI (Multi-Agent) phải tự động nhận thức được rủi ro: Khách sẽ phải đợi 9 tiếng ngoài sảnh. Lúc này, AI phải tự động đàm phán với Khách sạn xem có hỗ trợ "Early Check-in" lúc 5h sáng hay không. Nếu không, AI phải tự động đề xuất khách chuyển sang chuyến xe buýt chạy chuyến chiều (đến nơi lúc 14h), hoặc gợi ý khách đổi sang Khách sạn khác có hỗ trợ check-in sớm.
+
+Bài toán ràng buộc đa chiều này đòi hỏi một kiến trúc \textbf{Multi-Agent Orchestration (Đa tác tử điều phối)}, nơi các tác tử đại diện cho các dịch vụ khác nhau phải giao tiếp và thỏa hiệp với nhau trước khi đưa ra kết luận cuối cùng cho khách hàng.

@@ -1,0 +1,19 @@
+\subsection{Thiết kế Đồ thị Trạng thái (State Graph)}
+
+Để hiện thực hóa kiến trúc trên, Đồ án sử dụng thư viện \textbf{LangGraph} dựa trên nền tảng Lý thuyết Đồ thị (Graph Theory). 
+
+\subsubsection{Cấu trúc Không gian Trạng thái (AgentState)}
+Mọi nút trong đồ thị đều chia sẻ chung một Biến trạng thái (Shared State) được định nghĩa chặt chẽ thông qua hệ thống kiểu tĩnh (Type Hinting) của Python:
+\begin{itemize}
+    \item \texttt{messages}: Mảng danh sách các đối tượng \texttt{BaseMessage}. Đây là băng chuyền (append-only log) lưu toàn bộ lịch sử LLM sinh ra và lịch sử gọi API. Mảng này được cập nhật bằng toán tử \texttt{operator.add}.
+    \item \textbf{\texttt{sender}}: Thuộc tính định danh Tác tử vừa thực hiện hành động cuối cùng.
+    \item \textbf{\texttt{booking\_context}}: Đối tượng JSON Schema lưu các biến số đã chốt (Ngày đi, Giờ đến, Mã phòng, Số ghế) để duy trì bối cảnh mà không cần LLM phải đọc lại toàn bộ \texttt{messages} dư thừa.
+\end{itemize}
+
+\subsubsection{Lý thuyết Mạng Nút - Cạnh (Node - Edge Network)}
+Đồ thị được định nghĩa tập Nút $V = \{\text{Orchestrator}, \text{Bus}, \text{Hotel}, \text{Tools}\}$ và tập Cạnh $E$ có hướng:
+\begin{itemize}
+    \item \textbf{Cạnh có điều kiện (Conditional Edges):} Từ \texttt{Orchestrator}, tồn tại các cạnh hướng về \texttt{Bus}, \texttt{Hotel} hoặc Nút \texttt{END} (kết thúc để trả lời khách hàng). Sự lựa chọn nhánh nào được quyết định bởi một Hàm Định tuyến (Router Function) chạy cục bộ, kiểm tra thuộc tính \texttt{next\_agent} mà Orchestrator vừa sinh ra.
+    \item \textbf{Cạnh Cố định (Normal Edges):} Mọi nút chuyên gia (Bus/Hotel) sau khi phân tích xong hoặc gọi xong Tools, đều bị ép buộc luồng điều khiển bởi một cạnh tĩnh hướng ngược trở về \texttt{Orchestrator}. 
+\end{itemize}
+Cấu trúc thiết kế Hình Sao (Star Topology) này ngăn chặn hiện tượng Deadlock giữa các Agent (tránh việc Tác tử Xe và Tác tử Khách sạn cãi nhau liên tục) vì quyền ra quyết định tối cao luôn phải quay về Tác tử Nhạc trưởng.

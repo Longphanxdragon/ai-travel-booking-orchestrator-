@@ -1,0 +1,19 @@
+\subsection{Bài toán Dữ liệu động (Dynamic Data) - Sân chơi của Function Calling}
+Dữ liệu động là các thông tin có chu kỳ sống cực ngắn (Real-time data), ví dụ như tình trạng phòng trống (Available Rooms) và sơ đồ ghế trống trên xe (Bus Seat Map).
+
+\textbf{Đặc tả Lược đồ CSDL động (Dynamic Schema):} Hệ thống sử dụng cơ sở dữ liệu quan hệ PostgreSQL để lưu trữ trạng thái thực tế:
+\begin{itemize}
+    \item Bảng \texttt{hotel\_inventories(room\_id, date, available\_count, current\_price)}
+    \item Bảng \texttt{bus\_schedules(trip\_id, date, departure\_time, available\_seats)}
+\end{itemize}
+
+\textbf{Phân tích độ khó:} AI không thể được "nhồi" toàn bộ CSDL động này vào Prompt vì dữ liệu quá lớn và thay đổi từng giây. Do đó, yêu cầu kỹ thuật là phải thiết kế các \textbf{Công cụ gọi hàm (Tool Calling / Function Calling)}. AI phải có khả năng bóc tách câu hỏi \textit{"Mai có phòng không?"} thành chuỗi JSON sau để truy xuất CSDL trực tiếp:
+\begin{lstlisting}[language=json]
+{
+  "tool": "check_hotel_inventories",
+  "args": {
+    "date": "2026-08-26",
+    "hotel_id": "H1"
+  }
+}
+\end{lstlisting}

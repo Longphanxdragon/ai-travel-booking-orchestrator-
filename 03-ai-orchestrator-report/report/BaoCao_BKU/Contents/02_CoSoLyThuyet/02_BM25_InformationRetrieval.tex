@@ -1,0 +1,38 @@
+\section{Cơ sở Toán học của Thuật toán Tìm kiếm Lai (Hybrid Search) và Gộp hạng RRF}
+
+Để giải quyết bài toán sai lệch từ khóa (Keyword Mismatch) đối với dữ liệu văn bản tĩnh (như điều khoản hủy vé, phụ thu trẻ em, tên hãng xe), đề tài áp dụng kỹ thuật \textbf{Tìm kiếm Lai (Hybrid Search)} kết hợp giữa mô hình truy xuất thưa (Sparse Retrieval -- BM25) và truy xuất đặc (Dense Retrieval).
+
+\subsection{Thuật toán Xếp hạng BM25 (Best Matching 25)}
+Thuật toán BM25 là đỉnh cao của hệ thống truy xuất thông tin dựa trên tần suất từ (Term Frequency) và nghịch đảo tần suất tài liệu (Inverse Document Frequency). Đối với một câu truy vấn $Q$ gồm các từ khóa $q_1, q_2, \dots, q_n$ và một tài liệu $D$, điểm số BM25 được tính theo công thức:
+\begin{equation}
+    \text{Score}_{BM25}(D, Q) = \sum_{i=1}^{n} \text{IDF}(q_i) \cdot \frac{f(q_i, D) \cdot (k_1 + 1)}{f(q_i, D) + k_1 \cdot \left(1 - b + b \cdot \frac{|D|}{\text{avgdl}}\right)}
+\end{equation}
+Trong đó:
+\begin{itemize}
+    \item $f(q_i, D)$ là tần suất xuất hiện của từ khóa $q_i$ trong tài liệu $D$.
+    \item $|D|$ là độ dài (tổng số từ) của tài liệu $D$, và $\text{avgdl}$ (Average Document Length) là độ dài trung bình của tất cả tài liệu trong tập dữ liệu.
+    \item $k_1$ là tham số điều chỉnh độ bão hòa tần suất từ (thường chọn $k_1 \in [1.2, 2.0]$).
+    \item $b$ là tham số chuẩn hóa độ dài tài liệu (thường chọn $b = 0.75$).
+    \item $\text{IDF}(q_i)$ là trọng số nghịch đảo tần suất tài liệu, đo lường độ hiếm và độ quan trọng của từ khóa:
+    \begin{equation}
+        \text{IDF}(q_i) = \ln \left( \frac{N - n(q_i) + 0.5}{n(q_i) + 0.5} + 1 \right)
+    \end{equation}
+    với $N$ là tổng số tài liệu trong tập ngữ liệu và $n(q_i)$ là số tài liệu có chứa từ khóa $q_i$.
+\end{itemize}
+
+Nhờ thuật toán BM25, khi người dùng hỏi các từ khóa mang tính định danh cao như \textit{"Limousine phòng đôi"} hoặc \textit{"Phòng Deluxe"}, các tài liệu chứa chính xác cụm từ này sẽ nhận điểm số rất cao, không bị lấn át bởi các từ đồng nghĩa như trong Dense Vector.
+
+\subsection{Thuật toán Gộp hạng Tương hỗ (Reciprocal Rank Fusion -- RRF)}
+Sau khi thực hiện song song hai bộ tìm kiếm: bộ tìm kiếm BM25 (cho ra danh sách thứ hạng $R_{sparse}$) và bộ tìm kiếm Dense Vector (cho ra danh sách thứ hạng $R_{dense}$), một thách thức lớn xuất hiện: \textbf{Điểm số của BM25 (dải giá trị không giới hạn) và điểm số Cosine (dải giá trị từ -1 đến 1) không cùng thang đo (Different Scales)}.
+
+Nếu cộng trực tiếp hai điểm số này, kết quả sẽ bị lệch nghiêm trọng về một phía. Để giải quyết triệt để vấn đề này, đề tài áp dụng thuật toán \textbf{Reciprocal Rank Fusion (RRF)} do Cormack và cộng sự đề xuất. RRF không sử dụng điểm số thô mà chỉ dựa vào \textbf{Thứ hạng (Rank)} của tài liệu trong từng danh sách:
+\begin{equation}
+    \text{RRF\_Score}(d \in D) = \sum_{m \in M} \frac{1}{k + r_m(d)}
+\end{equation}
+Trong đó:
+\begin{itemize}
+    \item $M = \{\text{BM25}, \text{Dense Vector}\}$ là tập các bộ tìm kiếm thành phần.
+    \item $r_m(d) \in \{1, 2, 3, \dots\}$ là thứ hạng của tài liệu $d$ trong bộ tìm kiếm $m$. Nếu tài liệu không xuất hiện trong top kết quả của bộ tìm kiếm nào, thứ hạng được coi là vô cùng ($\infty$).
+    \item $k$ là hằng số làm mịn (Smoothing Constant), được thực nghiệm chứng minh tối ưu nhất tại giá trị $k = 60$. Hằng số này đảm bảo rằng các tài liệu xếp hạng đầu không áp đảo hoàn toàn các tài liệu xếp hạng sau, đồng thời trao ưu thế vượt trội cho tài liệu xuất hiện đồng thời trong cả hai bảng xếp hạng.
+\end{itemize}
+Tập kết quả sau khi được gộp hạng qua RRF đảm bảo sự cân bằng hoàn hảo giữa tính chính xác từ vựng (Exact Match) và độ phủ ngữ nghĩa (Semantic Coverage).

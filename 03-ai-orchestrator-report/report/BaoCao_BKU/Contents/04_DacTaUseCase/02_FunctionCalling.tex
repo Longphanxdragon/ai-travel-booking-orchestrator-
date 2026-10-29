@@ -1,0 +1,2 @@
+\subsection{UC-02: LLM gọi hàm kiểm tra tồn kho (Function Calling)}
+\textbf{Luồng sự kiện:} Khách hàng hỏi "Mai còn chuyến xe đêm đi Đà Lạt không?". LLM nhận diện ý định, tạm dừng sinh văn bản, yêu cầu kích hoạt Tool \texttt{check\_bus\_availability}. Backend thực thi truy vấn SQL lấy số ghế trống từ Database, trả lại kết quả (JSON) cho LLM. LLM tổng hợp thành câu trả lời tự nhiên.

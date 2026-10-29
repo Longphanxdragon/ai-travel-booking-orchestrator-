@@ -1,0 +1,27 @@
+\section{Cơ sở lý thuyết và công nghệ}
+
+\subsection{Kiến trúc Vi dịch vụ (Microservices) và RabbitMQ}
+Kiến trúc Microservices chia hệ thống thành các dịch vụ độc lập, giúp mở rộng linh hoạt và cô lập lỗi. Để giải quyết nút thắt giao tiếp đồng bộ (Synchronous), hệ thống sử dụng \textbf{RabbitMQ} (Message Broker) làm bộ đệm giảm chấn (Peak Shaving Buffer). Tin nhắn đặt hàng được đưa vào Hàng đợi (Queue), các Worker sẽ xử lý bất đồng bộ, đảm bảo không rớt đơn khi có Flash Sale.
+
+\subsection{Điều khiển đồng thời và Giao dịch ACID trong PostgreSQL}
+Để tránh xung đột cạnh tranh (Race Condition) khi hàng trăm Worker cùng trừ tồn kho, hệ thống áp dụng tiêu chuẩn \textbf{ACID} (Atomicity, Consistency, Isolation, Durability) với \textbf{Khóa bi quan (Pessimistic Locking)}. Câu lệnh \texttt{SELECT ... FOR UPDATE} khóa dòng dữ liệu cho đến khi Giao dịch (Transaction) kết thúc, ngăn chặn Mất cập nhật (Lost Update).
+
+\subsection{Circuit Breaker trong suy luận AI}
+Circuit Breaker (Cầu dao tự động) giám sát các API gọi LLM. Nếu tỷ lệ lỗi (HTTP 429/503) vượt ngưỡng, nó chuyển trạng thái \textbf{Open}, cách ly endpoint lỗi và tự động chuyển mạch (Failover) sang máy chủ LLM dự phòng, bảo vệ hệ thống không bị treo luồng chờ.
+
+\subsection{Hybrid Search và Reciprocal Rank Fusion (RRF)}
+Sinh văn bản tăng cường truy xuất (RAG) nguyên bản dễ gây ảo giác và bóp méo từ khóa (Keyword Mismatch). \textbf{Hybrid Search (Tìm kiếm Lai)} kết hợp:
+\begin{itemize}
+    \item \textbf{Tìm kiếm Thưa (BM25):} Dựa trên tần suất từ khóa, bắt chính xác mã phòng.
+    \item \textbf{Tìm kiếm Dày đặc (Dense Vector):} Bắt nét nghĩa ẩn của câu hỏi.
+\end{itemize}
+Hai kết quả được gộp bằng thuật toán \textbf{Reciprocal Rank Fusion (RRF)}:
+\begin{equation}
+RRF\_Score(d) = \sum_{r \in R} \frac{1}{k + r(d)}
+\end{equation}
+RRF đẩy các tài liệu phù hợp ở cả hai phương pháp lên vị trí top đầu.
+
+\subsection{Function Calling và Hệ thống Đa tác tử (Multi-Agent)}
+\textbf{Function Calling} biến LLM thành Tác tử có khả năng thực thi hành động (gọi API truy xuất số lượng vé thực). Điều này triệt tiêu hoàn toàn ảo giác (Hallucination) về dữ liệu động.
+
+Bài toán ràng buộc chéo (Cross-constraints) được giải quyết bằng \textbf{Hệ thống Đa tác tử (Multi-Agent System)} kết hợp \textbf{Chuỗi suy luận (Chain-of-Thought - CoT)}. Tác tử Điều phối (Orchestrator Agent) lập kế hoạch, đàm phán giữa Tác tử Xe (Bus Agent) và Tác tử Khách sạn (Hotel Agent), giải quyết các xung đột thời gian check-in.

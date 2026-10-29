@@ -1,0 +1,12 @@
+\subsection{Hiện thực Tool Calling bằng Pydantic}
+\begin{lstlisting}[language=Python, title=Định nghĩa Tool bằng Pydantic]
+class BusSearchInput(BaseModel):
+    route_code: str = Field(..., description="Mã tuyến đường, vd: SG-DL")
+    date: str = Field(..., description="Ngày đi YYYY-MM-DD")
+
+@tool(args_schema=BusSearchInput)
+async def check_bus_availability(route_code: str, date: str) -> str:
+    """Truy vấn CSDL PostgreSQL thời gian thực"""
+    # Logic SQL query...
+    return json.dumps({"seats": 10})
+\end{lstlisting}

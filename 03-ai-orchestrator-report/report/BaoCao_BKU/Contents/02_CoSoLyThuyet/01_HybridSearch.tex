@@ -1,0 +1,8 @@
+\subsection{Giới hạn của Native RAG và Giải pháp Hybrid Search}
+Sinh văn bản tăng cường truy xuất (RAG) nguyên bản sử dụng Dense Embeddings để tìm kiếm ngữ nghĩa. Tuy nhiên, nó bị "mù" trước các từ khóa chính xác (Keyword Mismatch). 
+\textbf{Hybrid Search (Tìm kiếm Lai)} giải quyết vấn đề này bằng cách kết hợp:
+\begin{itemize}
+    \item \textbf{Tìm kiếm Thưa (Sparse Search - BM25):} Dựa trên tần suất từ khóa, bắt chính xác mã phòng, tên riêng.
+    \item \textbf{Tìm kiếm Dày đặc (Dense Vector Search):} Bắt nét nghĩa ẩn của câu hỏi.
+\end{itemize}
+Để gộp chung hai bảng xếp hạng, thuật toán \textbf{Reciprocal Rank Fusion (RRF)} được sử dụng, đẩy các tài liệu phù hợp ở cả hai phương pháp lên vị trí top đầu.

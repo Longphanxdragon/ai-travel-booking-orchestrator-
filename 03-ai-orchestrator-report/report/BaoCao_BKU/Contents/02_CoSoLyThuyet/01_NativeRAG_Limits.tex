@@ -1,0 +1,26 @@
+\section{Giới hạn của Kiến trúc Naive RAG trong bài toán Dữ liệu Động}
+
+Kiến trúc sinh tăng cường truy xuất truyền thống (Naive Retrieval-Augmented Generation -- Naive RAG) bao gồm 3 bước cơ bản:
+\begin{enumerate}
+    \item \textbf{Phân đoạn và Nhúng (Indexing):} Văn bản thô được chia nhỏ thành các đoạn (Chunks) có kích thước cố định, sau đó đi qua mô hình nhúng (Embedding Model) để chuyển đổi thành các vector nhiều chiều và lưu trữ trong cơ sở dữ liệu vector.
+    \item \textbf{Truy xuất (Retrieval):} Khi người dùng gửi câu hỏi $q$, hệ thống nhúng câu hỏi thành vector $v_q$ và tìm kiếm $K$ đoạn văn bản có độ tương đồng Cosine cao nhất:
+    \begin{equation}
+        \text{CosineSimilarity}(v_q, v_d) = \frac{v_q \cdot v_d}{\|v_q\| \|v_d\|}
+    \end{equation}
+    \item \textbf{Tạo sinh (Generation):} $K$ đoạn văn bản được nhồi vào ngữ cảnh (Prompt Context) cùng câu hỏi ban đầu để mô hình ngôn ngữ lớn tổng hợp câu trả lời.
+\end{enumerate}
+
+\begin{figure}[htbp]
+\centering
+\fbox{\textbf{Sơ đồ luồng Naive RAG và Điểm nghẽn khi gặp Dữ liệu Tồn kho Thời gian thực}}
+\caption{Giới hạn của Naive RAG: Dữ liệu vector DB không bắt kịp biến động tồn kho theo từng giây.}
+\label{fig:naive_rag_limit}
+\end{figure}
+
+\subsection{Nguyên nhân thất bại của Naive RAG đối với Dữ liệu Tồn kho}
+Mặc dù Naive RAG giải quyết tốt bài toán tra cứu văn bản tĩnh (ví dụ: cẩm nang hướng dẫn sử dụng, bài báo khoa học), nó bộc lộ những điểm yếu chí mạng khi áp dụng vào dữ liệu tồn kho phòng và vé xe:
+\begin{itemize}
+    \item \textbf{Chi phí cập nhật chỉ mục quá lớn (Indexing Overhead):} Nếu số lượng vé xe hoặc phòng trống thay đổi sau mỗi giao dịch (vài giây một lần), việc liên tục tính toán lại vector embedding và ghi đè vào Vector DB sẽ gây nghẽn tài nguyên CPU/GPU và tiêu tốn chi phí API khổng lồ.
+    \item \textbf{Thiếu tính toàn vẹn giao dịch (Lack of ACID Properties):} Cơ sở dữ liệu vector không được thiết kế cho việc xử lý các giao dịch đồng thời (Concurrent Transactions). Hai người dùng cùng hỏi một ghế xe cuối cùng có thể cùng nhận được câu trả lời "còn chỗ" từ Vector DB, dẫn đến tình trạng bán trùng (Race Condition).
+\end{itemize}
+Do đó, đối với dữ liệu động, giải pháp tối ưu không phải là nạp vào Vector DB, mà là kết nối trực tiếp với Cơ sở dữ liệu Quan hệ (Relational Database) thông qua cơ chế \textbf{Function Calling}.

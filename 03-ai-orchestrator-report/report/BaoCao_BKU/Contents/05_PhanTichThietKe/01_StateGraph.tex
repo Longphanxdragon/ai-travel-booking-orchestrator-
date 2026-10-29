@@ -1,0 +1,12 @@
+\subsection{Cấu trúc Đồ thị Trạng thái Đa tác tử (State Graph)}
+Thay vì sử dụng biểu đồ tuần tự (Sequence Diagram) tĩnh kiểu Kỹ thuật phần mềm cũ, trong hệ thống Trí tuệ Nhân tạo dựa trên Đa tác tử (Agentic AI), các luồng xử lý mang tính chất động (Dynamic) và phi tuyến tính (Non-linear) dựa trên khả năng suy luận tự chủ của LLM.
+
+Hệ thống sử dụng khái niệm \textbf{Biến trạng thái dùng chung (Shared State)} để lưu trữ bộ nhớ ngắn hạn của toàn bộ quá trình đàm phán giữa các Tác tử. State Graph lưu trữ:
+\begin{itemize}
+    \item Lịch sử hội thoại (Chat History).
+    \item Kế hoạch hiện tại (Current Plan).
+    \item Lỗi nếu có (Errors).
+    \item Ngữ cảnh đặt chỗ (Booking Context bao gồm Vé xe và Khách sạn đang được giữ).
+\end{itemize}
+
+Mọi Agent đều đọc và ghi vào State này. Tác tử Điều phối (Orchestrator) đóng vai trò là "Bộ định tuyến" (Router) quyết định nút (Node) tiếp theo nào trong đồ thị sẽ được kích hoạt.

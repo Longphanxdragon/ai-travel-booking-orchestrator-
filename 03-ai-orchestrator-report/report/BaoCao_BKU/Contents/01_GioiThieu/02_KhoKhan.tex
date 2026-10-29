@@ -1,0 +1,24 @@
+\section{Các khó khăn và Giới hạn kỹ thuật của các giải pháp hiện nay}
+
+Mặc dù các mô hình ngôn ngữ lớn sở hữu năng lực sinh văn bản vượt trội, việc triển khai thực tế vào nghiệp vụ tư vấn đặt vé xe và phòng khách sạn đối mặt với ba rào cản kỹ thuật nghiêm trọng:
+
+\subsection{Bài toán Ảo giác Dữ liệu Động (Dynamic Hallucination \& Data Cutoff)}
+Mô hình LLM được huấn luyện trên dữ liệu tĩnh và bị giới hạn bởi thời điểm đóng băng tri thức (Knowledge Cutoff). Trong ngành vận tải và lưu trú, số lượng ghế trống trên mỗi chuyến xe khách và số lượng phòng trống của khách sạn biến động liên tục theo từng giây (Real-time Dynamic Inventory). 
+
+Khi người dùng hỏi: \textit{"Tối mai chuyến 23h00 xe Limousine đi Đà Lạt còn 2 vé phòng đôi không?"}, mô hình LLM cơ bản không có quyền truy cập vào cơ sở dữ liệu thời gian thực sẽ kích hoạt cơ chế sinh từ ngẫu nhiên (Autoregressive sampling), dẫn đến hiện tượng \textbf{Ảo giác (Hallucination)}. AI có xu hướng tự bịa ra thông tin rằng \textit{"vẫn còn vé"} hoặc tự báo một mức giá không tồn tại. Nếu doanh nghiệp sử dụng thông tin này để phản hồi khách hàng, hậu quả sẽ là việc nhận tiền của khách nhưng hệ thống thực tế đã hết chỗ (Overbooking), gây thiệt hại nghiêm trọng về uy tín và tài chính.
+
+\subsection{Bài toán Sai lệch Từ khóa Chuyên ngành (Keyword Mismatch in Dense Retrieval)}
+Các hệ thống Retrieval-Augmented Generation (RAG) truyền thống thường sử dụng mô hình nhúng ngữ nghĩa (Dense Vector Embeddings) để biểu diễn văn bản dưới dạng các vector số thực và tìm kiếm tài liệu dựa trên độ tương đồng Cosine (Cosine Similarity). Tuy nhiên, trong lĩnh vực du lịch và đặt phòng:
+\begin{itemize}
+    \item Tên các hạng phòng thường chỉ khác nhau một từ khóa mang tính định danh chính xác: Ví dụ chuỗi \texttt{"Deluxe Ocean View"} và \texttt{"Standard Ocean View"} có khoảng cách ngữ nghĩa trong không gian vector rất gần nhau, khiến Dense Retrieval thường xuyên truy xuất nhầm tài liệu chính sách của phòng Standard cho khách hỏi phòng Deluxe.
+    \item Tương tự, tên riêng của các nhà xe địa phương (như \textit{Điền Linh, Phong Phú, Trọng Minh, An Anh}) và mã số chuyến đi (\texttt{BUS-SG-DL-2300}) là các thực thể từ vựng độc nhất, không mang nhiều ý nghĩa ngữ nghĩa khái quát, dẫn đến việc Dense Embedding thất bại trong việc tìm kiếm chính xác thực thể (Exact Keyword Mismatch).
+\end{itemize}
+
+\subsection{Bài toán Thỏa mãn Ràng buộc Đa miền (Cross-Domain Constraint Satisfaction Problem - CSP)}
+Quy trình đặt một Combo Du lịch hoàn chỉnh đòi hỏi sự thỏa mãn đồng thời các ràng buộc cứng (Hard Constraints) và ràng buộc mềm (Soft Constraints) giữa hai miền dữ liệu độc lập:
+\begin{equation}
+    C_{time}: T_{checkin}^{hotel} - T_{arrival}^{bus} \le \Delta T_{acceptable}
+\end{equation}
+Ví dụ thực tế: Chuyến xe Limousine xuất phát lúc 23:00 từ Sài Gòn sẽ tới bến xe Đà Lạt vào khoảng 06:15 sáng hôm sau. Trong khi đó, giờ nhận phòng tiêu chuẩn tại hầu hết khách sạn là 14:00 chiều. Một Chatbot thông thường chỉ xử lý đơn lẻ từng câu hỏi sẽ chốt xe và chốt phòng độc lập, khiến khách hàng phải chờ đợi từ 7 đến 8 tiếng ngoài sảnh khách sạn. 
+
+Để giải quyết bài toán này, hệ thống cần một cơ chế suy luận logic (Reasoning) cấp tác tử (Agentic Planning) để tự động phát hiện độ lệch thời gian, chủ động tra cứu bảng phí nhận phòng sớm (Early Check-in) hoặc gợi ý dịch vụ ký gửi hành lý miễn phí trước khi khách hàng đưa ra quyết định.

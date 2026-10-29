@@ -1,0 +1,38 @@
+\section{Cơ chế Tác tử Thực thi Công cụ (Function Calling / Tool Use)}
+
+\subsection{Bản chất kỹ thuật của Function Calling trong LLM}
+Khác với chế độ sinh văn bản tự do (Free-form Generation), cơ chế \textbf{Function Calling (hoặc Tool Use)} cung cấp cho mô hình ngôn ngữ lớn khả năng giao tiếp với thế giới thực thông qua các giao diện lập trình ứng dụng (API) và hệ quản trị cơ sở dữ liệu.
+
+Khi một người dùng gửi thông điệp yêu cầu, quy trình xử lý diễn ra theo các pha chuẩn hóa:
+\begin{enumerate}
+    \item \textbf{Khai báo Công cụ (Tool Declaration):} Hệ thống định nghĩa cấu trúc hàm (Function Signature) và schema tham số đầu vào bằng định dạng chuẩn JSON Schema hoặc Pydantic v2. Ví dụ hàm \texttt{search\_bus\_trips(origin, destination, travel\_date, bus\_type)}.
+    \item \textbf{Trích xuất Thực thể và Phát sinh Lời gọi (Function Invocation):} Thay vì tự sinh câu trả lời, mô hình LLM nhận diện ý định (Intent), trích xuất các tham số tương ứng từ câu nói của người dùng và sinh ra một chuỗi JSON có cấu trúc:
+    \begin{equation}
+        \mathcal{M}(q, \mathcal{S}_{tools}) \rightarrow \text{ToolCall}(\text{name}=\text{"search\_bus\_trips"}, \text{args}=\{\dots\})
+    \end{equation}
+    \item \textbf{Thực thi tại Backend (Execution Layer):} Ứng dụng Backend nhận lệnh gọi này, chạy câu truy vấn SQL thực tế vào CSDL PostgreSQL hoặc gửi HTTP Request tới nền tảng đặt vé bên ngoài (VeXeRe API).
+    \item \textbf{Tích hợp Kết quả (Context Injection):} Dữ liệu thực tế được trả về cho LLM dưới dạng ngữ cảnh đã được xác thực (Ground Truth). LLM dựa vào dữ liệu này để sinh ra câu trả lời tự nhiên cho khách hàng.
+\end{enumerate}
+
+\subsection{Cơ chế Khóa Bi quan (Pessimistic Locking) đảm bảo Tính toàn vẹn ACID}
+Để loại bỏ hoàn toàn hiện tượng bán trùng vé/phòng (Race Condition) trong môi trường nhiều tác tử hoạt động đồng thời (Multi-user Concurrency), các thao tác giữ chỗ (Hold Booking) được bảo vệ bằng cơ chế khóa bi quan tại tầng cơ sở dữ liệu quan hệ:
+\begin{lstlisting}[language=SQL, caption={Cơ chế Khóa Bi quan chống bán trùng phòng trên PostgreSQL}]
+BEGIN TRANSACTION;
+-- Khoa dong du lieu phong de ngan cac tien trinh khac sua doi
+SELECT room_id, available_rooms 
+FROM hotel_rooms 
+WHERE room_id = 'HOTEL-DL-01' 
+FOR UPDATE;
+
+-- Kiem tra dieu kien con phong:
+-- Neu available_rooms >= so_phong_yeu_cau:
+UPDATE hotel_rooms 
+SET available_rooms = available_rooms - 1 
+WHERE room_id = 'HOTEL-DL-01';
+
+INSERT INTO reservations (session_id, room_id, status, expires_at)
+VALUES ('session_123', 'HOTEL-DL-01', 'HOLD', NOW() + INTERVAL '15 minutes');
+
+COMMIT;
+\end{lstlisting}
+Nhờ việc kết hợp Function Calling với câu lệnh \texttt{SELECT ... FOR UPDATE}, hệ thống bảo đảm tính toàn vẹn tuyệt đối (ACID Properties) mà các cơ sở dữ liệu vector hoàn toàn không thể cung cấp.

@@ -1,0 +1,7 @@
+\subsection{Triển khai với Docker Compose}
+Hệ thống được Container hóa với 3 khối chính:
+\begin{enumerate}
+    \item \texttt{qdrant-server}: Vector Database phục vụ Hybrid Search.
+    \item \texttt{postgres-db}: Cơ sở dữ liệu quan hệ phục vụ Function Calling.
+    \item \texttt{ai-agent-api}: Tiến trình FastAPI chạy LangGraph điều khiển hội thoại.
+\end{enumerate}
