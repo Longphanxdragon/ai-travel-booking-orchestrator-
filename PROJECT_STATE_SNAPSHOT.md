@@ -1,5 +1,5 @@
 # 🧠 PROJECT STATE SNAPSHOT & AI HANDOFF PROTOCOL
-*(Cập nhật ngày: 28/10/2026 - Lưu trữ vĩnh viễn trên Repo GitHub)*
+*(Cập nhật ngày: 31/10/2026 - Lưu trữ vĩnh viễn trên Repo GitHub)*
 
 > **🚨 DÀNH CHO AI ASSISTANT TRONG MỌI CONVERSATION MỚI:**
 > Khi người dùng mở một phiên trò chuyện mới, bạn **BẮT BUỘC** phải đọc file này đầu tiên để nắm toàn bộ bối cảnh dự án, kiến trúc đã thống nhất, và tiếp tục triển khai công việc mà KHÔNG ĐƯỢC hỏi lại những điều đã chốt!
@@ -13,8 +13,9 @@
 2. **Tác giả:** Phan Thành Long ([@Longphanxdragon](https://github.com/Longphanxdragon))
 3. **Repository GitHub (Đã push & đồng bộ trực tiếp):**
    `https://github.com/Longphanxdragon/ai-travel-booking-orchestrator-.git`
-4. **Chiến lược Kinh doanh (Business Strategy):**
-   - **Tư vấn Đa kênh thần tốc (< 1.5s):** Chat qua Facebook, Zalo, Webchat.
+4. **Chiến lược Kinh doanh & Vận hành (Business & ChatOps Strategy):**
+   - **Tư vấn Đa kênh thần tốc (< 1.5s):** Chat qua Facebook Messenger, Zalo OA, Webchat.
+   - **Mô hình Vận hành ChatOps (Không dùng Web App):** AI tự động tư vấn 24/7 $\rightarrow$ Bắn thông báo chốt đơn tức thì về Telegram/Zalo của Chủ doanh nghiệp $\rightarrow$ Chủ thao tác chốt hoặc gọi lại trực tiếp trên tin nhắn điện thoại.
    - **Không can thiệp Thanh toán:** Tránh toàn bộ rủi ro pháp lý, hoàn hủy, bồi thường. AI chỉ tư vấn, check chỗ, và điều hướng về nhà xe/khách sạn.
    - **Mục tiêu Vàng:** Sở hữu **Kho Dữ liệu Du lịch Độc quyền (Data Flywheel)** đã được lọc rác, ẩn danh PII để bán dữ liệu phân tích thị trường hoặc fine-tune AI riêng.
 
@@ -23,49 +24,37 @@
 ## 🛠️ II. HIỆN TRẠNG KỸ THUẬT ĐÃ HOÀN THÀNH (AS-IS)
 
 1. **Cấu trúc Monorepo:** Đầy đủ `01-platform-nocode`, `02-core-microservices`, `03-shared-contracts`, `docs/`, `03-ai-orchestrator-report/`.
-2. **Bộ Tài liệu Chuẩn GitHub (docs/):**
-   - `docs/01_architecture_and_algorithms.md`: Toán học BM25, RRF, Function Calling, LangGraph.
-   - `docs/02_evaluation_metrics.md`: Chuẩn đánh giá RAGAS (Faithfulness, Relevance, Context Recall).
-   - `docs/03_api_contracts_and_plugins.md`: Chuẩn API Plug-and-Play (`POST /api/v1/chat`).
-   - `docs/04_vexere_and_ota_plugin_adapter.md`: Mẫu thiết kế Adapter cắm VeXeRe/Traveloka.
-   - `docs/05_30_days_thesis_and_gtm_master_plan.md`: Lộ trình 30 ngày song hành Báo cáo & MVP.
-   - `docs/06_proprietary_data_flywheel_strategy.md`: Đường ống ETL lọc rác và tạo kho dữ liệu độc quyền.
-3. **Mã nguồn đã kiểm thử thực tế:**
-   - `02-core-microservices/backend/app/services/tools/vexere_realtime_adapter.py`: Đã test cào trực tiếp thành công 4 hãng xe lớn (Phương Trang, Điền Linh, Phong Phú, An Anh) từ VeXeRe.
-   - `02-core-microservices/backend/app/services/tools/data_cleaner_pipeline.py`: Pipeline lọc rác và ẩn danh PII.
-4. **Báo cáo LaTeX:**
-   - Template chuẩn ĐH Bách Khoa TP.HCM nằm trong `03-ai-orchestrator-report/report/`.
-   - File tổng hợp `03-ai-orchestrator-report/build_tex.py` đã sửa lỗi và chạy hoàn hảo.
+2. **Kiểm thử Tự động:**
+   - Bộ test `pytest tests/test_core_system.py` đạt **100% PASSED (3/3 passed)**.
+   - Đã benchmark 4 kịch bản thực tế (TC-01 đến TC-04): Tra cứu xe Nha Trang, phòng Đà Lạt thú cưng, combo lệch giờ 8 tiếng có PII.
+3. **Báo cáo LaTeX Chuẩn BKU ([`03-ai-orchestrator-report/report/BaoCao_BKU/`](03-ai-orchestrator-report/report/BaoCao_BKU/)):**
+   - **Chương 1: Tổng quan và Bối cảnh Đề tài** (✅ Đã xong)
+   - **Chương 2: Cơ sở Lý thuyết & Công nghệ Nền tảng** (✅ Đã xong)
+   - **Chương 3: Phân tích Yêu cầu Hệ thống** (✅ Đã xong - Toán học CSP $\langle X, D, C \rangle$, FR, NFR, 4 Bảng Trade-offs)
+   - **Chương 4: Đặc tả Chi tiết các Ca Sử dụng** (✅ Đã xong - TikZ Use Case Diagram, 7 Ca sử dụng chuẩn IEEE/RUP, Quy trình ChatOps không Web App)
+   - **Chương 5: Thiết kế Kiến trúc & Giải thuật** (✅ Đã xong - Phân tầng Microservices, StateGraph Star Topology, 3 Thuật toán lõi, Sơ đồ tuần tự ACID Locking, DDL CSDL, Data Flywheel)
+   - **Đóng gói Overleaf Ready:** File [`03-ai-orchestrator-report/report/BaoCao_BKU_Ready.zip`](03-ai-orchestrator-report/report/BaoCao_BKU_Ready.zip) đã tạo sẵn (180 KB), nạp 1 click lên Overleaf.
+4. **CI/CD GitHub Actions:**
+   - `.github/workflows/ci.yml`: Tự động kiểm thử Pydantic v2 schemas, PII Cleaner và Core Test Suite.
+   - `.github/workflows/compile-latex.yml`: Tự động biên dịch `main.tex` thành `BaoCao_LuanVan_BKU.pdf` khi push code.
 
 ---
 
-## 📖 III. KẾ HOẠCH VIẾT CUỐN BÁO CÁO ĐỒ ÁN (QUY MÔ 100+ TRANG)
+## 📖 III. KẾ HOẠCH VIẾT TIẾP BÁO CÁO (CÁC CHƯƠNG CÒN LẠI)
 
-Cuốn báo cáo sẽ được viết trực tiếp vào thư mục LaTeX `03-ai-orchestrator-report/report/Contents/` theo 9 chương chuẩn mực:
-
-- **Chương 1: Tổng quan và Bối cảnh Đề tài (~10 trang)**
-  *Thách thức ngành xe khách & lưu trú; Điểm yếu của Chatbot cũ; Mục tiêu và đóng góp của đề tài.*
-- **Chương 2: Cơ sở Lý thuyết & Công nghệ Nền tảng (~25 trang)**
-  *Bản chất LLM; Hạn chế Naive RAG; Toán học BM25 & Dense Vector; Thuật toán RRF; Function Calling; Multi-Agent StateGraph.*
-- **Chương 3: Phân tích Yêu cầu Hệ thống (~12 trang)**
-  *Phân tích dữ liệu tĩnh và động; Bài toán thỏa mãn ràng buộc chéo (Cross-domain CSP); Yêu cầu phi chức năng (Latency < 1.5s).*
-- **Chương 4: Đặc tả Ca sử dụng (Use Cases) (~12 trang)**
-  *Use Case Diagram; Kịch bản tra cứu xe, tra cứu phòng, xử lý lệch giờ.*
-- **Chương 5: Thiết kế Kiến trúc & Giải thuật (~25 trang)**
-  *Kiến trúc Microservices; Provider Adapter Pattern; Data Flywheel Pipeline; Thiết kế CSDL PostgreSQL & Qdrant.*
 - **Chương 6: Hiện thực Hệ thống (~20 trang)**
-  *Mã nguồn lõi FastAPI; Adapter VeXeRe thực tế; Pipeline lọc rác hội thoại PII Cleaner.*
+  *Mã nguồn lõi FastAPI (`app/main.py`); Adapter VeXeRe Playwright thực tế; Pipeline lọc rác và bảo mật PII (`data_cleaner_pipeline.py`); Logic giải quyết ràng buộc lệch giờ (`travel_tools.py`).*
 - **Chương 7: Kiểm thử Thực nghiệm & Đánh giá RAGAS (~15 trang)**
-  *Bộ 100 câu hỏi bẫy; Đánh giá Faithfulness, Answer Relevance; Benchmark với Naive LLM và Standard RAG.*
+  *Bộ 100 câu hỏi bẫy; Đánh giá Faithfulness, Answer Relevance; Benchmark đối chứng với bài báo ICML 2024 TravelPlanner.*
 - **Chương 8: Triển khai & Khả năng Thương mại hóa (~10 trang)**
-  *Đóng gói Docker; Chiến lược kinh doanh Data Flywheel; Phân tích chi phí vận hành TCO.*
+  *Đóng gói Docker Compose; Mô hình kinh doanh ChatOps cho Homestay/Nhà xe; Phân tích chi phí vận hành TCO.*
 - **Chương 9: Kết luận & Hướng phát triển (~5 trang)**
 
 ---
 
 ## ⚡ IV. HƯỚNG DẪN KHI BẮT ĐẦU CONVERSATION MỚI (DÀNH CHO USER)
 
-Khi cuộc trò chuyện này quá dài hoặc bạn mở cửa sổ chat mới, bạn chỉ cần gõ đúng một câu:
-> **"Đọc file `PROJECT_STATE_SNAPSHOT.md` và tiếp tục viết tiếp Chương [X] Báo cáo LaTeX cho tôi."**
+Khi mở cửa sổ chat mới, bạn chỉ cần gõ đúng một câu:
+> **"Đọc file `PROJECT_STATE_SNAPSHOT.md` và tiếp tục viết tiếp Chương 6 (Hiện thực Hệ thống) Báo cáo LaTeX cho tôi."**
 
-AI ở phiên mới sẽ đọc file này, hiểu ngay toàn bộ câu chuyện và bắt tay vào viết tiếp mà không bị quên bất kỳ điều gì!
+AI ở phiên mới sẽ đọc file này, hiểu ngay toàn bộ hiện trạng kỹ thuật và bắt tay vào viết tiếp Chương 6 mà không bị quên bất kỳ điều gì!
