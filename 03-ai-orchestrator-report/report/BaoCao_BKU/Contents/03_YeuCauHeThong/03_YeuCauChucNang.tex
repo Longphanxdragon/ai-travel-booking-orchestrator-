@@ -1,0 +1,118 @@
+\section{Đặc tả Yêu cầu Chức năng (Functional Requirements -- FR)}
+\label{sec:yeu_cau_chuc_nang}
+
+Hệ thống được thiết kế dưới dạng một Vi dịch vụ Trí tuệ Nhân tạo cắm rút (Plug-and-Play AI Microservice) phục vụ các nền tảng thương mại đa kênh (Omnichannel SaaS). Các yêu cầu chức năng được phân rã theo phương pháp phân tích chuẩn công nghệ phần mềm, gán mã định danh duy nhất và phân loại độ ưu tiên theo chuẩn MoSCoW (Must-have, Should-have, Could-have, Won't-have).
+
+\subsection{Danh mục Yêu cầu Chức năng Cốt lõi}
+\label{subsec:fr_list}
+
+\begin{table}[h!]
+\centering
+\small
+\begin{tabular}{|l|p{3.8cm}|p{6.5cm}|c|}
+\hline
+\textbf{Mã FR} & \textbf{Tên Chức năng} & \textbf{Mô tả Nghiệp vụ Chi tiết} & \textbf{Ưu tiên} \\
+\hline
+\textbf{FR-01} & Tiếp nhận \& Ẩn danh hóa PII đa kênh & Tiếp nhận webhook/RESTful request từ các kênh mạng xã hội (Facebook, Zalo, Webchat). Tự động chạy thuật toán Regex tất định ẩn danh hóa toàn bộ SĐT ($0901234567 \rightarrow 090****567$) và email trước khi xử lý hoặc ghi log. & MUST \\
+\hline
+\textbf{FR-02} & Phân loại Ý định Hội thoại (Intent Classification) & Phân rã câu hỏi tự nhiên của người dùng thành 4 miền ý định chuẩn tắc: \texttt{BUS\_ONLY}, \texttt{HOTEL\_ONLY}, \texttt{COMBO\_INQUIRY}, hoặc \texttt{POLICY\_QA}. & MUST \\
+\hline
+\textbf{FR-03} & Tra cứu Tồn kho Xe khách Thời gian thực & Dịch ý định người dùng thành tham số Pydantic (\texttt{BusSearchCriteria}). Gọi API/SQL truy vấn trực tiếp bảng \texttt{bus\_trips} trên PostgreSQL, bảo đảm không bị ảo giác tồn kho. & MUST \\
+\hline
+\textbf{FR-04} & Tra cứu Khách sạn \& Chính sách Lai (Hybrid Search) & Truy vấn phòng trống qua Pydantic (\texttt{HotelSearchCriteria}) đồng thời truy xuất văn bản cẩm nang/chính sách qua Hybrid Search (BM25 + Dense RRF) trên Qdrant. & MUST \\
+\hline
+\textbf{FR-05} & Suy luận Ràng buộc Chéo \& Đàm phán Lệch giờ & Tính toán độ lệch thời gian $\Delta T = T_{\text{checkin}} - T_{\text{arr}}$. Nếu $\Delta T > 3$ giờ, tự động tìm chính sách nhận phòng sớm hoặc giữ hành lý để đưa ra khuyến nghị thông minh. & MUST \\
+\hline
+\textbf{FR-06} & Khóa Giữ chỗ Tạm thời An toàn (ACID Holding) & Thực thi giao dịch khóa bi quan (\texttt{SELECT ... FOR UPDATE}) trên PostgreSQL, trừ tồn kho và tạo bản ghi giữ chỗ tạm thời có thời hạn tự hủy (TTL = 15 phút). & SHOULD \\
+\hline
+\textbf{FR-07} & Trích xuất Tri thức Bánh đà Dữ liệu ngầm & Chạy tác vụ ngầm (FastAPI BackgroundTasks) trích xuất ý định tinh khiết (\texttt{CleanedTravelIntent}) lưu vào Data Lake mà không làm tăng độ trễ trả lời khách hàng. & SHOULD \\
+\hline
+\end{tabular}
+\caption{Bảng Danh mục Yêu cầu Chức năng Hệ thống}
+\label{tab:functional_requirements}
+\end{table}
+
+\subsection{Đặc tả Ca Sử dụng Chi tiết (Use Case Specifications)}
+\label{subsec:use_case_specs}
+
+Dưới đây là đặc tả chi tiết 4 Ca sử dụng cốt lõi của hệ thống theo chuẩn công nghệ phần mềm:
+
+\subsubsection{UC-01: Tra cứu Phương tiện Di chuyển Thời gian thực}
+\begin{itemize}
+    \item \textbf{Mã ca sử dụng:} \texttt{UC-01}.
+    \item \textbf{Tác nhân (Actor):} Khách hàng (User) thông qua Zalo / Facebook Messenger / Webchat.
+    \item \textbf{Tiền điều kiện (Pre-conditions):} Cổng API Gateway tiếp nhận tin nhắn hợp lệ; kết nối cơ sở dữ liệu PostgreSQL ở trạng thái sẵn sàng.
+    \item \textbf{Luồng sự kiện chính (Main Success Scenario):}
+    \begin{enumerate}
+        \item Khách hàng gửi tin nhắn: \textit{"Tối mai có chuyến xe nào đi Đà Lạt sau 22h không?"}.
+        \item Hệ thống lọc bỏ PII, che số điện thoại nếu khách có để lại liên hệ.
+        \item Bộ điều phối xác định ý định: \texttt{BUS\_ONLY}, bóc tách thực thể: Điểm đến = Đà Lạt, Giờ đi $\ge$ 22:00.
+        \item Tác tử Bus Agent thực thi công cụ \texttt{search\_bus\_trips\_tool} gọi vào CSDL.
+        \item PostgreSQL trả về danh sách các chuyến xe thực tế còn ghế trống kèm giá vé và điểm đón.
+        \item Hệ thống định dạng phản hồi Markdown, sinh nút chuyển tiếp (Redirect Action) và gửi về cho người dùng trong thời gian $< 1.2$ giây.
+    \end{enumerate}
+    \item \textbf{Luồng sự kiện phụ (Alternative Flows):}
+    \begin{itemize}
+        \item \textit{Hết vé hoàn toàn:} Nếu CSDL trả về 0 kết quả phù hợp, hệ thống thông báo lịch sự tình trạng hết vé của khung giờ yêu cầu và tự động gợi ý các chuyến xe liền kề (ví dụ: chuyến sáng hôm sau).
+    \end{itemize}
+    \item \textbf{Hậu điều kiện (Post-conditions):} Trạng thái hội thoại được lưu vào bộ nhớ phiên; bản ghi ý định sạch được đưa vào hàng đợi Data Flywheel.
+\end{itemize}
+
+\subsubsection{UC-02: Tra cứu Lưu trú \& Chính sách qua Hybrid Search}
+\begin{itemize}
+    \item \textbf{Mã ca sử dụng:} \texttt{UC-02}.
+    \item \textbf{Tác nhân (Actor):} Khách hàng.
+    \item \textbf{Tiền điều kiện:} Vector Store Qdrant đã nạp chỉ mục văn bản chính sách; CSDL PostgreSQL lưu trữ số lượng phòng trống.
+    \item \textbf{Luồng sự kiện chính:}
+    \begin{enumerate}
+        \item Khách hàng hỏi: \textit{"Tìm khách sạn gần Chợ Đà Lạt có phòng Deluxe Ocean View cho mang theo mèo nhỏ."}
+        \item Hệ thống làm sạch PII, phân loại ý định: \texttt{HOTEL\_ONLY}.
+        \item Tác tử Hotel Agent phân rã hai nhánh truy vấn song song:
+        \begin{itemize}
+            \item Nhánh 1 (SQL): Kiểm tra phòng trống theo điều kiện \texttt{pet\_allowed = TRUE}.
+            \item Nhánh 2 (Hybrid Search): Bắn vector ngữ nghĩa và từ khóa \texttt{"Deluxe Ocean View"} vào Qdrant để lọc chính sách phụ thu.
+        \end{itemize}
+        \item Thuật toán RRF gộp hạng, đưa văn bản chính xác nhất lên vị trí Top 1.
+        \item Tổng hợp kết quả: Trả về tên khách sạn, số phòng còn trống, giá niêm yết và chính sách thú cưng chi tiết.
+    \end{enumerate}
+    \item \textbf{Hậu điều kiện:} Không xảy ra hiện tượng Keyword Mismatch hay nhầm lẫn sang loại phòng khác.
+\end{itemize}
+
+\subsubsection{UC-03: Điều phối Đa tác tử Xử lý Ràng buộc Chéo (Combo Logistics)}
+\begin{itemize}
+    \item \textbf{Mã ca sử dụng:} \texttt{UC-03}.
+    \item \textbf{Tác nhân (Actor):} Khách hàng.
+    \item \textbf{Tiền điều kiện:} Cả hai nguồn dữ liệu xe và phòng đều sẵn sàng.
+    \item \textbf{Luồng sự kiện chính:}
+    \begin{enumerate}
+        \item Khách hàng yêu cầu trọn gói combo xe và khách sạn trong cùng một tin nhắn.
+        \item Orchestrator nhận diện ý định \texttt{COMBO\_INQUIRY}, khởi tạo trạng thái chia sẻ \texttt{AgentState}.
+        \item Kích hoạt Bus Agent truy xuất giờ xe đến ($T_{\text{arr}}$).
+        \item Kích hoạt Hotel Agent truy xuất giờ nhận phòng ($T_{\text{checkin}}$).
+        \item Module \texttt{ConstraintSolver} tính toán $\Delta T = T_{\text{checkin}} - T_{\text{arr}}$.
+        \item Nếu phát hiện $\Delta T > 3.0$ giờ, kích hoạt tác tử tìm kiếm giải pháp: Phụ thu nhận phòng sớm (Early check-in) hoặc miễn phí giữ hành lý tại quầy lễ tân.
+        \item Sinh câu trả lời hoàn chỉnh kết hợp cả hai dịch vụ kèm cảnh báo lịch trình thông minh.
+    \end{enumerate}
+    \item \textbf{Hậu điều kiện:} Lịch trình di chuyển và lưu trú khớp logic toán học 100\%.
+\end{itemize}
+
+\subsubsection{UC-04: Khóa Giữ chỗ Tạm thời An toàn với Giao dịch ACID}
+\begin{itemize}
+    \item \textbf{Mã ca sử dụng:} \texttt{UC-04}.
+    \item \textbf{Tác nhân (Actor):} Khách hàng yêu cầu giữ chỗ; Hệ thống Worker xử lý đơn hàng.
+    \item \textbf{Tiền điều kiện:} Ghế xe hoặc phòng khách sạn còn tồn kho thực tế $\ge 1$.
+    \item \textbf{Luồng sự kiện chính:}
+    \begin{enumerate}
+        \item Khách hàng xác nhận: \textit{"Giữ cho tôi 2 ghế chuyến xe FUTA 22:30 này nhé"}.
+        \item Hệ thống khởi tạo giao dịch: \texttt{BEGIN TRANSACTION ISOLATION LEVEL READ COMMITTED}.
+        \item Thực thi câu lệnh khóa độc quyền: \texttt{SELECT available\_seats FROM bus\_trips WHERE trip\_id = :id FOR UPDATE}.
+        \item Kiểm tra điều kiện tồn kho: Nếu \texttt{available\_seats >= 2}, tiến hành trừ tồn kho: \texttt{UPDATE bus\_trips SET available\_seats = available\_seats - 2}.
+        \item Tạo bản ghi tạm thời vào bảng \texttt{reservations} với trạng thái \texttt{'HOLD'} và thời gian hết hạn \texttt{expires\_at = NOW() + INTERVAL '15 minutes'}.
+        \item Thực thi \texttt{COMMIT} giao dịch, giải phóng khóa và gửi mã giữ chỗ kèm đồng hồ đếm ngược 15 phút cho khách hàng.
+    \end{enumerate}
+    \item \textbf{Luồng sự kiện phụ (Tranh chấp đồng thời):}
+    \begin{itemize}
+        \item Nếu trong lúc chờ khóa, một khách hàng khác đã chốt ghế cuối cùng dẫn đến \texttt{available\_seats < 2}: Giao dịch lập tức thực thi \texttt{ROLLBACK}, trả về thông báo hết chỗ chính xác tuyệt đối, ngăn chặn 100\% nguy cơ bán khống.
+    \end{itemize}
+    \item \textbf{Hậu điều kiện:} Dữ liệu tồn kho được bảo toàn nguyên vẹn; không xảy ra hiện tượng Lost Update.
+\end{itemize}

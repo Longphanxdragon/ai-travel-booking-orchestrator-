@@ -1,0 +1,68 @@
+\section{Đường ống Bánh đà Dữ liệu Tinh khiết \& Bảo mật PII (Data Flywheel)}
+\label{sec:data_flywheel_pipeline}
+
+Một trong những đóng góp mang tính chiến lược thương mại cao nhất của đề tài là việc hiện thực hóa \textbf{Bánh đà Dữ liệu Độc quyền (Proprietary Data Flywheel)}. Trong thị trường B2B AI SaaS, giá trị thặng dư dài hạn của doanh nghiệp không nằm ở mã nguồn hay việc gọi API các mô hình nền tảng bên ngoài (vốn dễ dàng bị sao chép), mà nằm ở việc sở hữu \textbf{Bộ Dữ liệu Hội thoại Du lịch Tinh khiết (Cleaned Domain-Specific Dataset)}.
+
+\subsection{Nguyên lý Xử lý Bất đồng bộ Không phong tỏa (Non-blocking Async ETL)}
+\label{subsec:async_etl}
+
+Để bảo đảm yêu cầu phi chức năng về độ trễ phản hồi ($T_{\text{latency}} < 1.5$s), toàn bộ quy trình làm sạch rác, trích xuất thực thể và nạp vào hồ dữ liệu (Data Lake) được tách rời hoàn toàn khỏi luồng phản hồi trực tiếp:
+
+\begin{figure}[h!]
+\centering
+\begin{tikzpicture}[
+    scale=0.9, every node/.style={transform shape},
+    font=\small\sffamily,
+    box/.style={draw, rounded corners=3pt, thick, align=center, fill=white},
+    arrow/.style={->, >=stealth, thick}
+]
+
+\node[box, fill=blue!10] (req) {\textbf{Tin nhắn từ Khách hàng}};
+\node[box, fill=orange!15, right=1.5cm of req, yshift=0.9cm] (fast_path) {\textbf{Luồng Chính (Direct Response)}\\Orchestrator $\rightarrow$ Tool Call $\rightarrow$ ChatResponse\\(\textbf{Thời gian: $< 1.200$ ms})};
+\node[box, fill=green!15, right=1.5cm of req, yshift=-0.9cm] (async_path) {\textbf{Luồng Ngầm (BackgroundTasks)}\\PII Cleaner $\rightarrow$ Intent Extractor $\rightarrow$ Intent Lake\\(\textbf{Ảnh hưởng độ trễ: $0.0$ ms})};
+
+\draw[arrow] (req) |- (fast_path);
+\draw[arrow, dotted, thick] (req) |- (async_path);
+
+\end{tikzpicture}
+\caption{Mô hình Phân ly Luồng Xử lý Bất đồng bộ Bảo đảm Độ trễ}
+\label{fig:async_etl_flywheel}
+\end{figure}
+
+\subsection{Thuật toán Ẩn danh hóa PII theo Nghị định 13/2023/NĐ-CP}
+\label{subsec:pii_algorithm}
+
+Hệ thống áp dụng bộ lọc Regex tất định hai pha trước khi bất kỳ log hội thoại nào được ghi nhận:
+
+\begin{lstlisting}[language=Python, caption={Thuật toán Ẩn danh hóa PII trong data\_cleaner\_pipeline.py}]
+import re
+
+class ConversationDataCleaner:
+    @staticmethod
+    def anonymize_pii(text: str) -> str:
+        """
+        An danh hoa so dien thoai di dong Viet Nam va dia chi email.
+        Tuan thu Nghi dinh 13/2023/ND-CP ve Bao ve Du lieu Ca nhan.
+        """
+        # 1. Che so dien thoai Viet Nam (10 chu so): Giu 3-4 so dau va 3 so cuoi
+        # Vi du: 0901234567 -> 090****567
+        phone_pattern = r'(0\d{2,3})\d{4}(\d{3})'
+        text = re.sub(phone_pattern, r'\1****\2', text)
+
+        # 2. Che toan bo dia chi email ca nhan
+        # Vi du: phanlong@gmail.com -> [PROTECTED_EMAIL]
+        email_pattern = r'[\w\.-]+@[\w\.-]+'
+        text = re.sub(email_pattern, r'[PROTECTED_EMAIL]', text)
+
+        return text
+\end{lstlisting}
+
+\subsection{Chiến lược Khai thác Dữ liệu Độc quyền \& Lợi thế Cạnh tranh B2B}
+\label{subsec:business_value_flywheel}
+
+Dữ liệu sau khi đi qua đường ống làm sạch được lưu trữ vào bảng \texttt{travel\_intents\_lake} dưới định dạng chuẩn \texttt{CleanedTravelIntent}. Khối tài sản tri thức này mang lại 3 giá trị kinh doanh to lớn:
+\begin{enumerate}
+    \item \textbf{Báo cáo Phân tích Thị trường Du lịch B2B (Market Intelligence):} Tổng hợp các tuyến đường có nhu cầu xe phòng đôi cao nhất theo từng khung giờ; các khách sạn có tỷ lệ khách hỏi mang theo thú cưng nhiều nhất. Dữ liệu này được đóng gói thành các báo cáo xu hướng bán cho các nghiệp đoàn nhà xe và chuỗi khách sạn.
+    \item \textbf{Tập dữ liệu Vàng cho Huấn luyện Tinh chỉnh (Domain-Specific Fine-tuning):} Hàng trăm ngàn cặp hội thoại thực tế đã được chuẩn hóa trở thành nguồn dữ liệu chất lượng cao (High-quality Instruction Dataset) để fine-tune các mô hình mở (Llama-3, Qwen-2.5), giúp giảm $80\%$ chi phí gọi API thương mại trong tương lai.
+    \item \textbf{Hiệu ứng Mạng lưới Tự cường hóa (Self-Reinforcing Flywheel):} Càng nhiều nhà xe và khách sạn kết nối vào nền tảng $\rightarrow$ Khối lượng dữ liệu hội thoại càng lớn $\rightarrow$ Hệ thống AI càng hiểu sâu tâm lý và thuật ngữ địa phương $\rightarrow$ Trải nghiệm khách hàng vượt trội $\rightarrow$ Thu hút thêm đối tác B2B mới.
+\end{enumerate}

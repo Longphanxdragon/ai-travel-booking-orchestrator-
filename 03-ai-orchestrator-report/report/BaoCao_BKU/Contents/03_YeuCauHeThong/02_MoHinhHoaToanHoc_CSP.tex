@@ -1,0 +1,93 @@
+\section{Mô hình hóa Toán học Bài toán Thỏa mãn Ràng buộc Chéo (Cross-Domain CSP)}
+\label{sec:mo_hinh_hoa_csp}
+
+Trong nghiệp vụ đặt dịch vụ du lịch kết hợp, hành vi của khách hàng không bao giờ là các thao tác độc lập, mà là một chuỗi quyết định gắn kết chặt chẽ bởi các ràng buộc đa chiều về không gian, thời gian và tài chính. Một hệ thống Chatbot đơn lẻ (Single-Agent) hoặc một chuỗi tuần tự giản đơn (Linear Pipeline) sẽ thất bại hoàn toàn vì không thể giải quyết bài toán tối ưu hóa có điều kiện này. Đề tài mô hình hóa bài toán này dưới dạng một \textbf{Bài toán Thỏa mãn Ràng buộc Đa miền (Cross-Domain Constraint Satisfaction Problem -- CSP)}.
+
+\subsection{Hình thức hóa Bài toán CSP (Formal Problem Formulation)}
+\label{subsec:csp_formulation}
+
+Một bài toán thỏa mãn ràng buộc đa miền được định nghĩa bởi bộ ba hình thức:
+\begin{equation}
+\mathcal{P} = \langle X, D, C \rangle
+\end{equation}
+
+\subsubsection{Tập biến số nghiệp vụ (Variables $X$)}
+Tập biến số $X$ bao gồm hai tập con đại diện cho hai miền vận tải và lưu trú:
+\begin{equation}
+X = X_{\text{bus}} \cup X_{\text{hotel}}
+\end{equation}
+Trong đó:
+\begin{itemize}
+    \item $X_{\text{bus}} = \{O, L_{\text{dest}}, T_{\text{dep}}, T_{\text{arr}}, \text{Type}_{\text{bus}}, S_{\text{req}}\}$: Đại diện cho Điểm đi (Origin), Điểm đến (Destination), Giờ khởi hành (Departure Time), Giờ đến nơi dự kiến (Arrival Time), Hạng xe (Bus Type), và Số lượng vé yêu cầu (Requested Seats).
+    \item $X_{\text{hotel}} = \{L_{\text{hotel}}, T_{\text{checkin}}, T_{\text{checkout}}, \text{Type}_{\text{room}}, R_{\text{req}}, \text{Pet}_{\text{req}}, \text{Bud}_{\text{max}}\}$: Đại diện cho Vị trí khách sạn, Giờ nhận phòng tiêu chuẩn, Giờ trả phòng, Hạng phòng, Số lượng phòng yêu cầu, Yêu cầu mang theo thú cưng, và Ngân sách tối đa một đêm.
+\end{itemize}
+
+\subsubsection{Không gian Miền giá trị (Domains $D$)}
+Miền giá trị $D$ là tập hợp tất cả các giá trị khả dĩ của các biến số, được ràng buộc trực tiếp bởi trạng thái cơ sở dữ liệu thời gian thực:
+\begin{equation}
+D = D_{\text{bus}} \times D_{\text{hotel}}
+\end{equation}
+- $D_{\text{bus}} \subset \text{PostgreSQL}(\texttt{bus\_trips})$: Không gian các chuyến xe thực tế còn ghế trống tại ngày khởi hành. \\
+- $D_{\text{hotel}} \subset \text{PostgreSQL}(\texttt{hotel\_rooms})$: Không gian các phòng khách sạn thực tế còn trống tại ngày lưu trú.
+
+\subsubsection{Tập hợp Ràng buộc Hệ thống (Constraints $C$)}
+Tập ràng buộc $C$ được phân tách thành hai lớp: \textbf{Ràng buộc Cứng (Hard Constraints -- $C_{\text{hard}}$)} và \textbf{Ràng buộc Mềm/Logic Lịch trình (Soft Temporal Constraints -- $C_{\text{soft}}$)}.
+
+\begin{enumerate}
+    \item \textbf{Lớp Ràng buộc Cứng ($C_{\text{hard}}$) -- Bắt buộc thỏa mãn 100\%:}
+    \begin{itemize}
+        \item \textit{Ràng buộc Tồn kho thực tế (Inventory Consistency):}
+        \begin{equation}
+        \text{AvailableSeats}(X_{\text{bus}}) \ge S_{\text{req}} \quad \land \quad \text{AvailableRooms}(X_{\text{hotel}}) \ge R_{\text{req}}
+        \end{equation}
+        \item \textit{Ràng buộc Đồng nhất Địa lý (Geographic Alignment):} Điểm đến của xe khách phải trùng khớp với khu vực địa lý của khách sạn:
+        \begin{equation}
+        L_{\text{dest}}(X_{\text{bus}}) \equiv \text{LocationZone}(X_{\text{hotel}})
+        \end{equation}
+        \item \textit{Ràng buộc Quy định Đặc thù (Domain Policy Invariant):} Nếu khách mang thú cưng, khách sạn bắt buộc phải có chính sách cho phép:
+        \begin{equation}
+        \text{Pet}_{\text{req}} = \text{TRUE} \implies \text{PetAllowed}(X_{\text{hotel}}) = \text{TRUE}
+        \end{equation}
+    \end{itemize}
+
+    \item \textbf{Lớp Ràng buộc Mềm \& Xung đột Thời gian ($C_{\text{soft}}$) -- Cần Tác tử Điều phối Giải quyết:}
+    Khoảng cách thời gian chờ đợi giữa thời điểm xe đến bến và thời điểm khách sạn cho phép nhận phòng được xác định bởi:
+    \begin{equation}
+    \Delta T = T_{\text{checkin}}(X_{\text{hotel}}) - T_{\text{arr}}(X_{\text{bus}})
+    \end{equation}
+    Hàm phát hiện xung đột lịch trình (Conflict Detection Indicator) được định nghĩa:
+    \begin{equation}
+    \mathbb{I}_{\text{conflict}}(\Delta T) = 
+    \begin{cases}
+    1 \quad (\text{Xung đột: Phải chờ quá lâu}), & \text{nếu } \Delta T > \tau_{\text{upper}} \quad (\text{với } \tau_{\text{upper}} = 3.0\text{ giờ}) \\
+    1 \quad (\text{Xung đột: Đến muộn hơn check-in}), & \text{nếu } \Delta T < -\tau_{\text{lower}} \quad (\text{với } \tau_{\text{lower}} = 0\text{ giờ}) \\
+    0 \quad (\text{Khớp lịch trình lý tưởng}), & \text{nếu } 0 \le \Delta T \le \tau_{\text{upper}}
+    \end{cases}
+    \end{equation}
+\end{enumerate}
+
+\subsection{Kịch bản Xung đột Thực tế và Chiến lược Suy luận của Đa Tác tử}
+\label{subsec:real_world_conflict}
+
+Để minh họa tính cấp thiết của mô hình CSP, xét kịch bản thực tế phổ biến nhất trên tuyến Sài Gòn -- Đà Lạt:
+\begin{itemize}
+    \item \textbf{Yêu cầu của khách hàng:} \textit{"Tối 20/11 cho tôi 1 vé xe giường nằm phòng đôi đi Đà Lạt và 1 phòng khách sạn cho mang theo cún cưng, muốn tới nơi là có phòng nghỉ ngay."}
+    \item \textbf{Dữ liệu thực tế bóc tách từ PostgreSQL:}
+    \begin{itemize}
+        \item Chuyến xe phù hợp nhất: Điền Linh Limousine khởi hành lúc 23:00, dự kiến đến Đà Lạt lúc $T_{\text{arr}} = \text{06:15 sáng}$.
+        \item Khách sạn phù hợp nhất: Homestay Thung Lũng Mây, cho phép thú cưng, giá 550.000 VNĐ, giờ nhận phòng tiêu chuẩn $T_{\text{checkin}} = \text{14:00 chiều}$.
+    \end{itemize}
+    \item \textbf{Đánh giá CSP:}
+    \begin{equation}
+    \Delta T = 14:00 - 06:15 = 7\text{ giờ } 45\text{ phút} > 3.0\text{ giờ} \implies \mathbb{I}_{\text{conflict}} = 1
+    \end{equation}
+\end{itemize}
+
+Nếu hệ thống là một Chatbot thông thường, nó sẽ trả lời vô cảm: \textit{"Dạ có xe Điền Linh đến lúc 6h15 và phòng Thung Lũng Mây nhận lúc 14h, anh/chị có muốn đặt không?"}. Người dùng tới nơi sẽ phải vất vả đứng ngoài đường hoặc sảnh khách sạn 8 tiếng đồng hồ trong thời tiết lạnh của Đà Lạt cùng với thú cưng.
+
+Trong hệ thống đề xuất của đồ án, khi phát hiện $\mathbb{I}_{\text{conflict}} = 1$, Đồ thị Tác tử (Multi-Agent StateGraph) lập tức kích hoạt \textbf{Nút Giải quyết Xung đột (Conflict Resolution Node)}:
+\begin{enumerate}
+    \item Tác tử Hotel Agent gọi công cụ tìm kiếm lai Hybrid Search truy xuất cẩm nang chính sách của Homestay Thung Lũng Mây.
+    \item Trích xuất điều khoản: \textit{"Hỗ trợ nhận phòng sớm từ 06:00 sáng với mức phụ phí 150.000 VNĐ, hoặc hỗ trợ gửi hành lý và thú cưng miễn phí tại khu vực sảnh sinh hoạt chung"}.
+    \item Tác tử Orchestrator gộp toàn bộ giải pháp này vào câu trả lời cuối cùng, biến một xung đột dịch vụ thành một trải nghiệm tư vấn thông minh, chuẩn xác và thuyết phục tuyệt đối.
+\end{enumerate}

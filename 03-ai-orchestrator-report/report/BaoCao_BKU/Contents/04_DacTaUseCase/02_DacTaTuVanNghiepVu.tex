@@ -1,0 +1,126 @@
+\section{Đặc tả Nhóm Ca Sử dụng Tiếp nhận và Tra cứu Nghiệp vụ}
+\label{sec:dacta_tuvan_nghiepvu}
+
+Mục này trình bày đặc tả chi tiết 3 ca sử dụng nền tảng tạo nên khả năng tiếp nhận đa kênh và truy vấn dữ liệu chuẩn xác của hệ thống theo khuôn mẫu công nghệ phần mềm IEEE 830 / RUP.
+
+\subsection{UC-01: Tiếp nhận Hội thoại Đa kênh \& Tự động Ẩn danh hóa PII}
+\label{subsec:spec_uc01}
+
+\begin{table}[h!]
+\centering
+\small
+\begin{tabular}{|p{3.2cm}|p{11.5cm}|}
+\hline
+\textbf{Tên Ca Sử dụng} & \textbf{UC-01: Tiếp nhận Hội thoại Đa kênh \& Ẩn danh hóa PII} \\
+\hline
+\textbf{Tác nhân (Actor)} & Khách hàng (Primary Actor), API Gateway (Secondary Actor). \\
+\hline
+\textbf{Mục tiêu} & Tiếp nhận thông điệp từ mạng xã hội, xác thực tính hợp lệ và che chắn $100\%$ thông tin định danh cá nhân (Số điện thoại, Email) trước khi nạp vào lõi AI. \\
+\hline
+\textbf{Tiền điều kiện} & Cổng Webhook của FastAPI đang ở trạng thái hoạt động; Token xác thực hợp lệ. \\
+\hline
+\textbf{Kích hoạt (Trigger)} & Khách hàng gửi tin nhắn vào Fanpage Facebook hoặc Zalo OA của doanh nghiệp. \\
+\hline
+\textbf{Luồng sự kiện chính (Main Flow)} & 
+\begin{enumerate}
+    \item Khách hàng gửi thông điệp chứa thông tin liên hệ: \textit{"Mình là Tuấn (0912345678, tuan@gmail.com), tư vấn cho mình xe đi Đà Lạt"}.
+    \item Cổng API Gateway tiếp nhận webhook payload, kiểm tra chữ ký xác thực \texttt{X-Hub-Signature-256} hoặc \texttt{X-Zalo-Token}.
+    \item Hệ thống chuyển thông điệp vào module \texttt{ConversationDataCleaner.anonymize\_pii()}.
+    \item Bộ lọc Regex tất định quét và thay thế:
+    \begin{itemize}
+        \item Số điện thoại: $0912345678 \longrightarrow 091****678$.
+        \item Email: $tuan@gmail.com \longrightarrow \text{[PROTECTED\_EMAIL]}$.
+    \end{itemize}
+    \item Thông điệp đã làm sạch được đóng gói vào đối tượng chuẩn \texttt{ChatRequest} và chuyển tiếp tới Tác tử Điều phối (Orchestrator).
+\end{enumerate} \\
+\hline
+\textbf{Luồng ngoại lệ (Alternative Flow)} & 
+\textit{Chữ ký Webhook không hợp lệ:} Hệ thống từ chối xử lý, ghi log bảo mật và trả về mã lỗi HTTP 403 Forbidden nhằm ngăn chặn tấn công giả mạo (Spoofing). \\
+\hline
+\textbf{Hậu điều kiện} & Nội dung chuyển vào lõi AI và ghi log hệ thống hoàn toàn không chứa dữ liệu cá nhân thô, bảo đảm tuân thủ Nghị định 13/2023/NĐ-CP. \\
+\hline
+\textbf{Quy tắc nghiệp vụ} & Giữ lại 3 số đầu (mã mạng viễn thông) và 3 số cuối của SĐT để phục vụ việc nhận diện định danh khách quen mà không lộ số nguyên bản. \\
+\hline
+\end{tabular}
+\caption{Bản Đặc tả Chi tiết Ca Sử dụng UC-01}
+\label{tab:spec_uc01}
+\end{table}
+
+\subsection{UC-02: Tra cứu Phương tiện Di chuyển Thời gian thực (Function Calling)}
+\label{subsec:spec_uc02}
+
+\begin{table}[h!]
+\centering
+\small
+\begin{tabular}{|p{3.2cm}|p{11.5cm}|}
+\hline
+\textbf{Tên Ca Sử dụng} & \textbf{UC-02: Tra cứu Phương tiện Di chuyển Thời gian thực} \\
+\hline
+\textbf{Tác nhân} & Khách hàng, Tác tử Xe (Bus Agent), CSDL PostgreSQL / VeXeRe Adapter. \\
+\hline
+\textbf{Mục tiêu} & Truy xuất chính xác chuyến xe còn vé trống, giờ xuất bến, điểm đón và giá cước thực tế mà không xảy ra hiện tượng ảo giác thông tin. \\
+\hline
+\textbf{Tiền điều kiện} & Phiên hội thoại đã được xác thực; CSDL xe khách hoặc kết nối mạng sẵn sàng. \\
+\hline
+\textbf{Luồng sự kiện chính} & 
+\begin{enumerate}
+    \item Tác tử Nhạc trưởng phân tích câu hỏi người dùng, nhận diện ý định \texttt{BUS\_ONLY} hoặc \texttt{COMBO\_INQUIRY}.
+    \item Bóc tách các thực thể: Điểm đến (Đà Lạt / Nha Trang), ngày đi, loại xe yêu cầu (Giờ đêm, Phòng đôi Limousine).
+    \item Chuyển đổi tham số thành đối tượng Pydantic \texttt{BusSearchCriteria}.
+    \item Kích hoạt công cụ \texttt{search\_bus\_trips\_tool(criteria)}.
+    \item Công cụ thực thi câu truy vấn SQL tất định vào bảng \texttt{bus\_trips}: Lọc theo \texttt{destination}, \texttt{bus\_type} và điều kiện \texttt{available\_seats > 0}.
+    \item CSDL trả về danh sách các chuyến xe khớp chính xác (Nhà xe Điền Linh, Phương Trang, giờ chạy 23:00, còn 4 chỗ, giá 450.000 VNĐ, điểm đón Hàng Xanh).
+    \item Tác tử định dạng câu trả lời Markdown rõ ràng và đính kèm nút hành động liên hệ.
+\end{enumerate} \\
+\hline
+\textbf{Luồng ngoại lệ} & 
+\textit{Hết vé chuyến yêu cầu:} Nếu các chuyến khung giờ đêm đã bán hết chỗ (\texttt{available\_seats = 0}), hệ thống tự động tìm kiếm các chuyến liền kề (ví dụ: chuyến 06:00 sáng hôm sau) và thông báo lịch sự cho khách hàng lựa chọn thay thế. \\
+\hline
+\textbf{Hậu điều kiện} & Thông tin phản hồi trùng khớp $100\%$ với trạng thái tồn kho thực tế; cập nhật danh sách chuyến xe vào biến trạng thái \texttt{AgentState.bus\_results}. \\
+\hline
+\end{tabular}
+\caption{Bản Đặc tả Chi tiết Ca Sử dụng UC-02}
+\label{tab:spec_uc02}
+\end{table}
+
+\subsection{UC-03: Tra cứu Lưu trú \& Chính sách qua Hybrid Search}
+\label{subsec:spec_uc03}
+
+\begin{table}[h!]
+\centering
+\small
+\begin{tabular}{|p{3.2cm}|p{11.5cm}|}
+\hline
+\textbf{Tên Ca Sử dụng} & \textbf{UC-03: Tra cứu Lưu trú \& Chính sách qua Hybrid Search} \\
+\hline
+\textbf{Tác nhân} & Khách hàng, Tác tử Khách sạn (Hotel Agent), Qdrant Vector Store, PostgreSQL. \\
+\hline
+\textbf{Mục tiêu} & Truy vấn phòng khách sạn còn trống đồng thời bóc tách chính xác các điều khoản chính sách hoàn hủy, nhận phòng sớm hoặc phụ phí thú cưng. \\
+\hline
+\textbf{Tiền điều kiện} & Bộ sưu tập vector \texttt{travel\_policies} trên Qdrant đã nạp chỉ mục văn bản chính sách; bảng CSDL \texttt{hotel\_rooms} lưu trữ số lượng phòng. \\
+\hline
+\textbf{Luồng sự kiện chính} & 
+\begin{enumerate}
+    \item Khách hàng yêu cầu: \textit{"Tìm homestay săn mây có phòng đôi cho mang theo chó nhỏ"}.
+    \item Tác tử Hotel Agent trích xuất yêu cầu: Địa điểm = Đà Lạt, Loại phòng = Phòng Đôi, Yêu cầu đặc thù = Thú cưng (\texttt{pet\_friendly\_required = True}).
+    \item Khởi tạo đối tượng \texttt{HotelSearchCriteria} và gọi công cụ \texttt{search\_hotel\_rooms\_tool}.
+    \item Truy vấn CSDL PostgreSQL lọc các khách sạn thỏa mãn điều kiện \texttt{pet\_allowed = TRUE} và \texttt{available\_rooms > 0}.
+    \item Đồng thời kích hoạt truy vấn Hybrid Search vào Qdrant:
+    \begin{itemize}
+        \item Luồng 1: Dense Vector tìm kiếm ngữ nghĩa văn bản quy định nuôi thú cưng.
+        \item Luồng 2: Sparse BM25 bắt chính xác các từ khóa đặc thù (\textit{"thú cưng dưới 5kg"}, \textit{"phụ phí vệ sinh"}).
+        \item Gộp hạng kết quả bằng thuật toán RRF ($k=60$).
+    \end{itemize}
+    \item Tổng hợp thông tin: Homestay Thung Lũng Mây, giá 550.000 VNĐ/đêm, còn 2 phòng, chính sách chấp nhận chó mèo dưới 5kg.
+    \item Lưu kết quả vào \texttt{AgentState.hotel\_results}.
+\end{enumerate} \\
+\hline
+\textbf{Luồng ngoại lệ} & 
+\textit{Không có phòng cho phép thú cưng:} Hệ thống thông báo rõ ràng không có khách sạn nào nhận vật nuôi trong khu vực yêu cầu, và đề xuất dịch vụ trông giữ thú cưng gần khách sạn nếu có dữ liệu tĩnh. \\
+\hline
+\textbf{Hậu điều kiện} & Không bị nhầm lẫn giữa các hạng phòng nhờ cơ chế gộp hạng BM25 + Dense RRF. \\
+\hline
+\end{tabular}
+\caption{Bản Đặc tả Chi tiết Ca Sử dụng UC-03}
+\label{tab:spec_uc03}
+\end{table}

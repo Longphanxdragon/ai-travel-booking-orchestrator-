@@ -1,0 +1,66 @@
+\section{Đặc tả Yêu cầu Phi Chức năng (Non-Functional Requirements -- NFR)}
+\label{sec:yeu_cau_phi_chuc_nang}
+
+Đối với một hệ thống kết hợp giữa nghiên cứu học thuật đỉnh cao và nền tảng SaaS thương mại B2B, các yêu cầu phi chức năng đóng vai trò quyết định khả năng sống còn của sản phẩm trong môi trường vận hành thực tế. Hệ thống thiết lập 6 chỉ tiêu kỹ thuật khắt khe có thể đo lường định lượng:
+
+\subsection{Danh mục Yêu cầu Phi Chức năng Chi tiết}
+\label{subsec:nfr_list}
+
+\begin{enumerate}
+    \item \textbf{NFR-01: Hiệu năng và Độ trễ Phản hồi (Response Latency)}
+    \begin{itemize}
+        \item \textit{Chỉ tiêu định lượng:} Toàn bộ quá trình tiếp nhận webhook, lọc PII, định tuyến tác tử, gọi công cụ CSDL và sinh câu trả lời Markdown phải hoàn tất trong thời gian:
+        \begin{equation}
+        T_{\text{latency}} \le 1.500\text{ ms} \quad (95\%\text{ các yêu cầu đạt } < 1.200\text{ ms})
+        \end{equation}
+        \item \textit{Ý nghĩa thực tiễn:} Trên các kênh nhắn tin tương tác như Facebook Messenger và Zalo, nếu bot phản hồi trễ quá 3 giây, tỷ lệ khách hàng thoát phiên (Drop-off Rate) lên tới $42\%$. Độ trễ $< 1.5$s đem lại cảm giác tương tác tự nhiên tương đương với nhân viên tổng đài chuyên nghiệp.
+    \end{itemize}
+
+    \item \textbf{NFR-02: Độ Trung thực và Triệt tiêu Ảo giác (Zero Hallucination \& Faithfulness)}
+    \begin{itemize}
+        \item \textit{Chỉ tiêu định lượng:} Tỷ lệ ảo giác đối với thông tin tồn kho động (số ghế trống, tình trạng phòng, giá cước) bắt buộc phải đạt mức tuyệt đối:
+        \begin{equation}
+        \text{Hallucination Rate} = 0.0\%
+        \end{equation}
+        \item Đo lường bằng chỉ số \textbf{Faithfulness} theo tiêu chuẩn đánh giá RAGAS (Retrieval Augmented Generation Assessment) trên tập 100 câu hỏi bẫy:
+        \begin{equation}
+        F_{\text{faithfulness}} \ge 0.98 \quad (\text{So với Naive RAG chỉ đạt } \approx 0.52)
+        \end{equation}
+    \end{itemize}
+
+    \item \textbf{NFR-03: Độ Chính xác Truy xuất Từ vựng Ngách (Retrieval Accuracy)}
+    \begin{itemize}
+        \item \textit{Chỉ tiêu định lượng:} Đối với các truy vấn chứa mã phòng đặc thù (\texttt{FAM-OC-99}, \texttt{DLX-VILL}) và tên riêng nhà xe địa phương, động cơ Hybrid Search (BM25 + Qdrant RRF) phải đạt:
+        \begin{equation}
+        \text{MRR} \ge 0.92 \quad \text{và} \quad \text{NDCG@10} \ge 0.95
+        \end{equation}
+        \item Xóa bỏ hoàn toàn hiện tượng nhầm lẫn văn bản do trùng lặp vector ngữ nghĩa của Dense Search.
+    \end{itemize}
+
+    \item \textbf{NFR-04: Tính Toàn vẹn Dữ liệu và Kiểm soát Đồng thời (ACID Concurrency)}
+    \begin{itemize}
+        \item \textit{Chỉ tiêu định lượng:} Dưới tải trọng cao khi có $N$ tác tử hoặc khách hàng cùng truy cập và thực hiện giữ chỗ một tài nguyên cuối cùng (ví dụ: ghế số 01 của chuyến xe 22:30), hệ thống đảm bảo:
+        \begin{equation}
+        \text{Lost Update Rate} = 0.0\% \quad \text{và} \quad \text{Overbooking Rate} = 0.0\%
+        \end{equation}
+        \item Cơ chế khóa bi quan (\texttt{SELECT ... FOR UPDATE}) phải duy trì tính cô lập (Isolation) ở cấp độ \texttt{READ COMMITTED} hoặc \texttt{REPEATABLE READ}.
+    \end{itemize}
+
+    \item \textbf{NFR-05: Bảo mật và Tuân thủ Quyền riêng tư (Privacy \& Compliance)}
+    \begin{itemize}
+        \item \textit{Chỉ tiêu định lượng:} Tuân thủ nghiêm ngặt \textbf{Nghị định 13/2023/NĐ-CP của Chính phủ Việt Nam} về Bảo vệ Dữ liệu Cá nhân.
+        \item $100\%$ dữ liệu định danh cá nhân (PII) bao gồm Số điện thoại di động Việt Nam (đầu số 03, 05, 07, 08, 09) và Địa chỉ Thư điện tử (Email) phải được ẩn danh hóa tất định trước khi ghi vào log hệ thống hoặc lưu vào kho dữ liệu Data Lake:
+        \begin{equation}
+        \text{PII Leakage Rate} = 0.0\%
+        \end{equation}
+    \end{itemize}
+
+    \item \textbf{NFR-06: Độ Sẵn sàng và Chịu lỗi (High Availability \& Resilience)}
+    \begin{itemize}
+        \item \textit{Chỉ tiêu định lượng:} Độ sẵn sàng hoạt động (Service Uptime) đạt $\ge 99.9\%$.
+        \item Tích hợp mẫu thiết kế \textbf{Circuit Breaker (Cầu dao tự động)} tại tầng gọi mô hình ngôn ngữ lớn: Khi nhà cung cấp chính (ví dụ: OpenAI GPT-4o) gặp sự cố quá tải HTTP 429 hoặc lỗi 503, hệ thống phải tự động chuyển mạch (Failover) sang nhà cung cấp dự phòng (ví dụ: Google Gemini 1.5 Pro) trong thời gian:
+        \begin{equation}
+        T_{\text{failover}} < 10\text{ ms}
+        \end{equation}
+    \end{itemize}
+\end{enumerate}

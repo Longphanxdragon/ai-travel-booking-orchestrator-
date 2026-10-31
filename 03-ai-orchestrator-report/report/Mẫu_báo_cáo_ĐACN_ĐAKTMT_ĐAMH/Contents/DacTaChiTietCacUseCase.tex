@@ -1,0 +1,15 @@
+\section{Đặc tả chi tiết các Use-case}
+
+\subsection{UC-01: Tiếp nhận và Định tuyến tải trọng cao (Gateway \& RabbitMQ)}
+\textbf{Luồng sự kiện:} Khách hàng gửi tin nhắn. Gateway xác thực \texttt{X-Hub-Signature}. Nếu là yêu cầu chốt đơn, đóng gói AMQP xuất bản vào \texttt{order.incoming} của RabbitMQ và trả về HTTP 202 Accepted.
+\textbf{Mục tiêu:} Đảm bảo không nghẽn cổ chai API.
+
+\subsection{UC-02: Worker cập nhật tồn kho an toàn với ACID}
+\textbf{Luồng sự kiện:} Worker rút (pull) tin nhắn từ RabbitMQ. Khởi tạo \texttt{BEGIN TRANSACTION}. Thực thi \texttt{SELECT ... FOR UPDATE} khóa dòng. Kiểm tra số lượng và trừ tồn kho. Ghi log và \texttt{COMMIT}. Gửi \texttt{ACK} cho RabbitMQ.
+
+\subsection{UC-03: Tư vấn Lịch trình Đa tác tử (Multi-Agent)}
+\textbf{Luồng sự kiện:} Orchestrator Agent nhận yêu cầu. Nó dùng CoT để lên kế hoạch. Kích hoạt Bus Agent gọi Tool truy vấn chuyến xe. Sau đó kích hoạt Hotel Agent tìm phòng khớp giờ đến. Nếu không có, Orchestrator tự điều chỉnh ngày giờ đàm phán lại.
+\textbf{Mục tiêu:} Giải quyết ràng buộc chéo tự động.
+
+\subsection{UC-04: Truy xuất Hybrid Search và Circuit Breaker}
+\textbf{Luồng sự kiện:} Nếu Agent cần đọc chính sách, gọi Hybrid Search (BM25 + Vector) $\rightarrow$ gộp RRF. Khi gọi LLM inference, nếu máy chủ LLM 1 quá tải (HTTP 429), Circuit Breaker mở (Open) và chuyển mạch (Failover) sang LLM 2.

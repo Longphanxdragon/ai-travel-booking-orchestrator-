@@ -1,0 +1,96 @@
+\section{Đặc tả Nhóm Ca Sử dụng Thông báo ChatOps và Bánh đà Dữ liệu}
+\label{sec:dacta_chatops_dataflywheel}
+
+Nhóm ca sử dụng này phản ánh trực tiếp yêu cầu thực tiễn của các doanh nghiệp du lịch vừa và nhỏ tại Việt Nam: Loại bỏ rào cản thao tác trên các Web App phức tạp, chuyển đổi toàn bộ quy trình vận hành sang môi trường tin nhắn tức thời (Chat-to-Chat / ChatOps), đồng thời âm thầm tạo lập khối tài sản dữ liệu độc quyền dài hạn.
+
+\subsection{UC-06: Thông báo Đơn hàng ChatOps \& Can thiệp Tin nhắn Trực tiếp (Human Takeover)}
+\label{subsec:spec_uc06}
+
+\begin{table}[h!]
+\centering
+\small
+\begin{tabular}{|p{3.2cm}|p{11.5cm}|}
+\hline
+\textbf{Tên Ca Sử dụng} & \textbf{UC-06: Thông báo Đơn hàng ChatOps \& Can thiệp Tin nhắn} \\
+\hline
+\textbf{Tác nhân} & Chủ doanh nghiệp / Nhân viên lễ tân (Primary Actor), Khách hàng, Notification Dispatcher. \\
+\hline
+\textbf{Mục tiêu} & Chuyển giao thông tin khách đặt chỗ hoặc khách cần tư vấn sâu trực tiếp vào điện thoại của chủ doanh nghiệp qua tin nhắn (Telegram/Zalo), cho phép chủ thao tác chốt đơn hoặc tiếp quản cuộc trò chuyện ngay trên điện thoại mà không cần mở Web App. \\
+\hline
+\textbf{Tiền điều kiện} & Khách hàng để lại thông tin đặt chỗ hợp lệ (hoặc yêu cầu gặp người thật); tài khoản Telegram/Zalo của chủ đã kết nối Webhook. \\
+\hline
+\textbf{Kích hoạt (Trigger)} & Khách hàng xác nhận giữ chỗ thành công ở UC-05 hoặc khách có câu hỏi phức tạp vượt ngưỡng suy luận của AI. \\
+\hline
+\textbf{Luồng sự kiện chính} & 
+\begin{enumerate}
+    \item AI hoàn tất việc tư vấn và tạo bản ghi giữ chỗ tạm thời cho khách hàng.
+    \item Module \texttt{ChatOpsNotifier} tự động định dạng thông điệp báo động và bắn tin nhắn qua API tới điện thoại của chủ doanh nghiệp:
+    \begin{center}
+    \begin{minipage}{10.5cm}
+    \texttt{🔔 [ĐƠN ĐẶT MỚI TỪ ZALO/FANPAGE]}\\
+    $\bullet$ \textbf{Khách hàng:} Anh Minh (\texttt{0987.654.321})\\
+    $\bullet$ \textbf{Lịch trình di chuyển:} Nhà xe Điền Linh, chuyến 23:00 ngày 15/10 (2 vé)\\
+    $\bullet$ \textbf{Lưu trú:} Homestay Thung Lũng Mây, Hạng Bungalow (Nhận lúc 06:15 sáng)\\
+    $\bullet$ \textbf{Trạng thái:} Đã giữ chỗ tạm thời (TTL còn 14:59 phút)\\
+    $\bullet$ \textbf{Hành động nhanh:}\\
+    \phantom{xxx}[📞 Bấm gọi khách ngay] \quad [✅ Xác nhận cọc] \quad [💬 Vào chat trực tiếp]
+    \end{minipage}
+    \end{center}
+    \item Điện thoại chủ doanh nghiệp đổ chuông thông báo tức thời.
+    \item Chủ doanh nghiệp bấm nút \texttt{[📞 Bấm gọi khách ngay]} để chốt cọc trực tiếp với khách hoặc bấm \texttt{[✅ Xác nhận cọc]} trên tin nhắn.
+    \item Hệ thống ghi nhận trạng thái xác nhận và gửi tin nhắn cảm ơn cho khách trên Fanpage/Zalo của họ.
+\end{enumerate} \\
+\hline
+\textbf{Luồng tiếp quản (Human Takeover)} & 
+Nếu chủ bấm nút \texttt{[💬 Vào chat trực tiếp]}:
+\begin{enumerate}
+    \item Hệ thống kích hoạt cơ chế Handover Protocol (chuyển quyền điều khiển).
+    \item AI tạm ngừng trả lời tự động trong phiên này trong vòng 30 phút.
+    \item Chủ doanh nghiệp mở ứng dụng Messenger hoặc Zalo trên điện thoại cá nhân vào trao đổi trực tiếp với khách hàng.
+\end{enumerate} \\
+\hline
+\textbf{Hậu điều kiện} & Chủ doanh nghiệp nắm bắt khách hàng ngay lập tức; không bị trôi tin nhắn ca đêm; toàn bộ quy trình xử lý không đòi hỏi máy tính bàn hay phần mềm cồng kềnh. \\
+\hline
+\end{tabular}
+\caption{Bản Đặc tả Chi tiết Ca Sử dụng UC-06}
+\label{tab:spec_uc06}
+\end{table}
+
+\subsection{UC-07: Trích xuất Tri thức Tinh khiết vào Bánh đà Dữ liệu ngầm (Data Flywheel)}
+\label{subsec:spec_uc07}
+
+\begin{table}[h!]
+\centering
+\small
+\begin{tabular}{|p{3.2cm}|p{11.5cm}|}
+\hline
+\textbf{Tên Ca Sử dụng} & \textbf{UC-07: Trích xuất Tri thức Tinh khiết vào Bánh đà Dữ liệu ngầm} \\
+\hline
+\textbf{Tác nhân} & Tác vụ nền (Background Worker), PostgreSQL Data Lake. \\
+\hline
+\textbf{Mục tiêu} & Lọc bỏ tin nhắn rác (chào hỏi, icon), ẩn danh hóa thông tin nhạy cảm và bóc tách các thực thể du lịch có giá trị thương mại lưu trữ vào hồ dữ liệu mà không làm tăng độ trễ phản hồi khách hàng ($0$ ms latency impact). \\
+\hline
+\textbf{Tiền điều kiện} & Lượt hội thoại kết thúc; câu trả lời đã được gửi về cho người dùng. \\
+\hline
+\textbf{Luồng sự kiện chính} & 
+\begin{enumerate}
+    \item Cổng FastAPI gửi phản hồi HTTP 200 OK kèm payload câu trả lời cho khách hàng (hoàn tất luồng chính trong thời gian $< 1.2$ giây).
+    \item Cơ chế \texttt{BackgroundTasks} kích hoạt hàm \texttt{background\_etl()} chạy ngầm trên một luồng tách biệt.
+    \item Module \texttt{ConversationDataCleaner.extract\_intent()} phân tích toàn bộ văn bản hội thoại đã làm sạch PII.
+    \item Trích xuất các thực thể chuẩn hóa:
+    \begin{itemize}
+        \item \texttt{origin}: "Sài Gòn".
+        \item \texttt{destination}: "Đà Lạt".
+        \item \texttt{preferred\_bus\_type}: "Limousine VIP (Phòng Đôi)".
+        \item \texttt{special\_requirements}: \texttt{['Có mang theo thú cưng', 'Cần nhận phòng sớm']}.
+    \end{itemize}
+    \item Chèn bản ghi có cấu trúc vào bảng \texttt{travel\_intents\_lake} trên PostgreSQL.
+    \item Tiến trình ngầm kết thúc an toàn mà không phong tỏa bất kỳ tài nguyên mạng nào của luồng giao tiếp chính.
+\end{enumerate} \\
+\hline
+\textbf{Hậu điều kiện} & Dữ liệu hành vi du lịch thực tế được tích lũy liên tục theo thời gian, hình thành kho tài sản tri thức độc quyền phục vụ việc bán báo cáo phân tích thị trường B2B và huấn luyện tinh chỉnh mô hình ngôn ngữ mở trong tương lai. \\
+\hline
+\end{tabular}
+\caption{Bản Đặc tả Chi tiết Ca Sử dụng UC-07}
+\label{tab:spec_uc07}
+\end{table}

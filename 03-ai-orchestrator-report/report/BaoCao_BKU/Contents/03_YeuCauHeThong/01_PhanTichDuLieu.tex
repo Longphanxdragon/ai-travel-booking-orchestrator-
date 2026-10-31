@@ -1,0 +1,54 @@
+\section{Phân tích Bản chất Miền Dữ liệu trong Nghiệp vụ Du lịch \& Vận tải}
+\label{sec:phan_tich_mien_du_lieu}
+
+Trong các hệ thống phần mềm nghiệp vụ hướng hội thoại (Task-Oriented Dialogue Systems), việc phân loại và thấu hiểu bản chất vật lý của dữ liệu là bước tiên quyết định hình kiến trúc xử lý. Nghiệp vụ tư vấn du lịch kết hợp (Cross-domain Travel Logistics) sở hữu hai miền dữ liệu có đặc tính toán học và chu kỳ sống hoàn toàn trái ngược nhau: \textbf{Dữ liệu Tĩnh (Static Data)} và \textbf{Dữ liệu Động biến thiên cao (High-Frequency Dynamic State)}.
+
+\subsection{Miền Dữ liệu Tĩnh (Static Data) và Điểm mù của Tìm kiếm Ngữ nghĩa}
+\label{subsec:static_data}
+
+Dữ liệu tĩnh bao gồm toàn bộ các thông tin mô tả phi cấu trúc hoặc bán cấu trúc ít biến động theo thời gian ($T_{\text{update}} \gg 1\text{ ngày}$), bao gồm:
+\begin{itemize}
+    \item \textbf{Chính sách lưu trú và quy định phòng:} Chính sách hoàn hủy (Ví dụ: \textit{"Hủy phòng trước 48 giờ được hoàn 100\% tiền cọc, sau 48 giờ tính phí 50\%"}), quy định nhận phòng sớm/trả phòng trễ (\textit{"Early check-in từ 05:00 tính phụ thu 50\% giá phòng một đêm"}), chính sách vật nuôi (\textit{"Cho phép mang thú cưng dưới 5kg với phụ phí vệ sinh 150.000 VNĐ"}), và mô tả tiện ích nội khu (hồ bơi nước ấm, view thung lũng, ban công riêng).
+    \item \textbf{Quy chuẩn dịch vụ nhà xe:} Mô tả loại phương tiện (Limousine 34 phòng VIP, Cabin đôi tình yêu 24 phòng), quy định khối lượng và kích thước hành lý ký gửi, chính sách vận chuyển thú cưng tại khoang hành lý, và danh mục các điểm đón/trả cố định dọc tuyến đường.
+    \item \textbf{Mã định danh đặc thù (Exact Identifiers):} Các mã loại phòng duy nhất (ví dụ: \texttt{FAM-OC-99}, \texttt{DLX-VILL-01}) và tên riêng của các nhà xe địa phương (Điền Linh, Phương Trang, Phong Phú, An Anh).
+\end{itemize}
+
+\textbf{Điểm mù kỹ thuật (Failure Mode) của Dense Vector Search thuần túy:} \\
+Khi khách hàng gửi câu hỏi mang tính định danh chính xác:
+\begin{center}
+\textit{"Cho tôi kiểm tra phòng FAM-OC-99 và nhà xe Điền Linh còn chạy tối mai không?"}
+\end{center}
+Nếu hệ thống áp dụng cơ chế Vector Search truyền thống (Naive Semantic Search), truy vấn được mã hóa thành vector nhúng dày đặc $\mathbf{e}_q \in \mathbb{R}^d$ thông qua mô hình Transformer (ví dụ: \texttt{text-embedding-3-small} hoặc \texttt{bge-m3}). Khoảng cách ngữ nghĩa giữa truy vấn $q$ và văn bản tài liệu $d$ được đo bằng độ tương đồng Cosine:
+\begin{equation}
+\text{Sim}_{\text{dense}}(q, d) = \frac{\mathbf{e}_q \cdot \mathbf{e}_d}{\|\mathbf{e}_q\| \|\mathbf{e}_d\|}
+\end{equation}
+
+Do các mã định danh như \texttt{FAM-OC-99} là các từ hiếm (Out-of-Vocabulary hoặc ít xuất hiện trong tập tiền huấn luyện), không gian vector ngữ nghĩa của chúng bị chi phối hoàn toàn bởi các từ thông dụng xung quanh như \textit{"phòng"}, \textit{"kiểm tra"}. Kết quả là:
+\begin{equation}
+\text{Sim}_{\text{dense}}(q, d_{\texttt{FAM-OC-99}}) \approx \text{Sim}_{\text{dense}}(q, d_{\texttt{STD-OC-01}})
+\end{equation}
+Hiện tượng này dẫn đến sai số nghiêm trọng (Keyword Mismatch): Hệ thống trả về chính sách của phòng Tiêu chuẩn (Standard) thay vì phòng Gia đình (Family), gây ra tỷ lệ thông tin sai lệch vượt ngưỡng $35\%$ trong thực nghiệm. Do đó, yêu cầu bắt buộc đặt ra là phải tích hợp mô hình tìm kiếm từ vựng thưa (Sparse Lexical Search -- BM25) để bảo toàn giá trị thông tin của các định danh duy nhất.
+
+\subsection{Miền Dữ liệu Động (High-Frequency Dynamic State) và Giới hạn của RAG}
+\label{subsec:dynamic_data}
+
+Trái ngược với dữ liệu tĩnh, Dữ liệu động là các biến trạng thái có tần suất thay đổi tính bằng giây ($T_{\text{update}} < 1\text{ giây}$), phản ánh trực tiếp nguồn tài nguyên hữu hạn của doanh nghiệp:
+\begin{itemize}
+    \item \textbf{Tồn kho ghế xe (Available Bus Seats):} Sơ đồ ghế thực tế của từng chuyến xe trên bảng cơ sở dữ liệu quan hệ \texttt{bus\_trips}.
+    \item \textbf{Tồn kho phòng khách sạn (Available Hotel Rooms):} Số lượng phòng thực tế còn trống cho từng ngày cụ thể trên bảng \texttt{hotel\_rooms}.
+    \item \textbf{Biến động giá cước thời gian thực (Dynamic Fare):} Giá vé điều chỉnh theo cung cầu hoặc phụ thu giờ cao điểm/lễ tết.
+\end{itemize}
+
+\textbf{Điểm sụp đổ (Catastrophic Collapse) khi dùng RAG cho dữ liệu động:} \\
+Kiến trúc RAG tiêu chuẩn hoạt động dựa trên cơ chế đánh chỉ mục trước (Offline Indexing) vào Vector Database. Khi một khách hàng đặt thành công ghế số 05 của chuyến xe FUTA 22:30, số ghế trống giảm từ $1 \rightarrow 0$. Nếu sử dụng RAG:
+\begin{enumerate}
+    \item \textbf{Độ trễ cập nhật chỉ mục (Index Freshness Latency):} Không một cơ sở dữ liệu vector nào có thể cập nhật nhúng (Re-embedding) và xây dựng lại đồ thị HNSW cho hàng triệu điểm dữ liệu theo từng mili-giây mà không làm nghẽn toàn bộ CPU/GPU.
+    \item \textbf{Ảo giác nghiêm trọng (Hallucination \& Overbooking):} LLM đọc ngữ cảnh cũ từ vector store sẽ khẳng định với khách hàng \textit{"Dạ chuyến 22:30 vẫn còn 1 ghế ạ!"}. Khách hàng tiến hành thanh toán, dẫn đến thảm họa bán khống (Overbooking) và tranh chấp tài chính.
+    \item \textbf{Thiếu vắng tính nguyên tử ACID:} Vector Database hoàn toàn không hỗ trợ cơ chế khóa hàng (Row-level Locking) và giao dịch ACID để xử lý tranh chấp đồng thời (Concurrency Control).
+\end{enumerate}
+
+\textbf{Kết luận phân tích:} Hệ thống bắt buộc phải thực hiện \textbf{Phân ly Triệt để Kiến trúc (Architectural Decoupling)}:
+\begin{itemize}
+    \item Dữ liệu Tĩnh $\rightarrow$ Đẩy vào Động cơ Tìm kiếm Lai \textbf{Hybrid Search (BM25 + Qdrant Dense RRF)}.
+    \item Dữ liệu Động $\rightarrow$ Đẩy vào CSDL Quan hệ \textbf{PostgreSQL 16 với Giao dịch ACID Khóa Bi quan (Pessimistic Locking)}, được truy cập thông qua cơ chế \textbf{Function Calling (Tool Calling)} với lược đồ Pydantic nghiêm ngặt.
+\end{itemize}

@@ -1,0 +1,78 @@
+\section{Thiết kế Đồ thị Trạng thái Đa Tác tử (Multi-Agent StateGraph)}
+\label{sec:stategraph_design}
+
+Khác biệt cốt lõi giữa hệ thống AI thông thường và một hệ thống Đại lý Đa Tác tử Tự trị (Agentic AI) nằm ở cơ chế điều khiển luồng thực thi. Thay vì sử dụng các chuỗi tuần tự cứng nhắc (Hardcoded Pipelines), hệ thống áp dụng \textbf{Lý thuyết Đồ thị Trạng thái Hữu hạn (Finite State Graph)} thông qua nền tảng LangGraph.
+
+\subsection{Không gian Trạng thái Dùng chung (Shared State Definition)}
+\label{subsec:agent_state_schema}
+
+Mọi nút (Node) trong đồ thị đều đọc và ghi dữ liệu vào một đối tượng trạng thái dùng chung duy nhất được chuẩn hóa thông qua kiểu dữ liệu tĩnh của Python:
+
+\begin{lstlisting}[language=Python, caption={Cấu trúc Không gian Trạng thái Chung AgentState}]
+from typing import TypedDict, List, Dict, Any, Optional, Literal
+from app.models.schemas import BusSearchCriteria, HotelSearchCriteria, CrossDomainMatchResult
+
+class AgentState(TypedDict):
+    session_id: str                      # Dinh danh phien hoi thoai
+    user_query: str                      # Cau hoi nguyen ban tu nguoi dung
+    cleaned_query: str                  # Cau hoi da qua bo loc an danh PII
+    intent: Literal["BUS_ONLY", "HOTEL_ONLY", "COMBO_INQUIRY", "GENERAL_QA"]
+    bus_criteria: Optional[BusSearchCriteria]       # Tham so loc xe khach
+    hotel_criteria: Optional[HotelSearchCriteria]   # Tham so loc phong khach san
+    bus_results: List[Dict[str, Any]]               # Ket qua tra cuu ton kho xe
+    hotel_results: List[Dict[str, Any]]             # Ket qua tra cuu phong trong
+    cross_domain_result: Optional[CrossDomainMatchResult] # Ket qua giai CSP
+    policy_context: List[str]                       # Cac doan van ban tu Qdrant RRF
+    iteration_count: int                            # Bien dem so vong lap chong treo
+    final_reply: str                                # Cau tra loi tong hop cuoi cung
+\end{lstlisting}
+
+\subsection{Hình thái Mạng lưới (Network Topology) \& Bảng Chuyển Trạng thái}
+\label{subsec:star_topology_transition}
+
+Hệ thống thiết kế mạng lưới tác tử theo \textbf{Kiến trúc Hình Sao (Star Topology)}: Tác tử Điều phối (Orchestrator) nằm ở vị trí trung tâm, giữ toàn quyền kiểm soát việc điều hướng (Routing). Không có bất kỳ tác tử chuyên gia lớp dưới nào (Bus Agent, Hotel Agent) được phép gọi trực tiếp sang nhau. Quy tắc này triệt tiêu hoàn toàn nguy cơ phân kỳ suy luận (Divergent Reasoning) và tranh cãi vô tận giữa các Agent.
+
+Bảng chuyển trạng thái của StateGraph được đặc tả tường minh như sau:
+
+\begin{table}[h!]
+\centering
+\small
+\begin{tabular}{|p{2.6cm}|p{3.8cm}|p{4.0cm}|p{2.8cm}|}
+\hline
+\textbf{Trạng thái Hiện tại ($S_t$)} & \textbf{Điều kiện Bảo vệ (Guard Condition)} & \textbf{Hành động Thực thi (Action)} & \textbf{Trạng thái Kế tiếp ($S_{t+1}$)} \\
+\hline
+\texttt{START} & Tiếp nhận \texttt{ChatRequest} mới & Anonymize PII $\rightarrow$ Khởi tạo \texttt{AgentState} rỗng & \texttt{ROUTER\_NODE} \\
+\hline
+\texttt{ROUTER\_NODE} & \texttt{intent == "BUS\_ONLY"} & Bóc tách \texttt{bus\_criteria} & \texttt{BUS\_SPECIALIST} \\
+\hline
+\texttt{ROUTER\_NODE} & \texttt{intent == "HOTEL\_ONLY"} & Bóc tách \texttt{hotel\_criteria} & \texttt{HOTEL\_SPECIALIST} \\
+\hline
+\texttt{ROUTER\_NODE} & \texttt{intent == "COMBO\_INQUIRY"} & Bóc tách đồng thời 2 bộ tham số & \texttt{DISPATCH\_PARALLEL} \\
+\hline
+\texttt{DISPATCH\_PARALLEL} & Hoàn tất khởi tạo tham số & Kích hoạt song song Bus \& Hotel tools & \texttt{CONSTRAINT\_SOLVER} \\
+\hline
+\texttt{BUS\_SPECIALIST} & Gọi xong CSDL xe khách & Ghi kết quả vào \texttt{bus\_results} & \texttt{SYNTHESIS\_NODE} \\
+\hline
+\texttt{HOTEL\_SPECIALIST} & Gọi xong CSDL khách sạn & Ghi kết quả vào \texttt{hotel\_results} & \texttt{SYNTHESIS\_NODE} \\
+\hline
+\texttt{CONSTRAINT\_SOLVER} & $\Delta T = T_{\text{checkin}} - T_{\text{arr}} > 3\text{h}$ & Phát hiện xung đột lịch trình ($\mathbb{I}_{\text{conflict}} = 1$) & \texttt{CONFLICT\_RESOLVER} \\
+\hline
+\texttt{CONSTRAINT\_SOLVER} & $\Delta T \le 3\text{h}$ hoặc không xung đột & Xác nhận lịch trình đồng bộ hoàn hảo & \texttt{SYNTHESIS\_NODE} \\
+\hline
+\texttt{CONFLICT\_RESOLVER} & Đã tìm thấy chính sách & Gọi Qdrant RRF trích xuất Early Check-in & \texttt{SYNTHESIS\_NODE} \\
+\hline
+\texttt{SYNTHESIS\_NODE} & Đã có đầy đủ context thực tế & Sinh Markdown trả lời + Nút hành động & \texttt{END} \\
+\hline
+\end{tabular}
+\caption{Bảng Chuyển Trạng thái Toàn diện của Multi-Agent StateGraph}
+\label{tab:state_transition_table}
+\end{table}
+
+\subsection{Cơ chế Phòng chống Treo Luồng (Loop Breaking \& Safety Guards)}
+\label{subsec:safety_guards}
+
+Trong các hệ thống Agentic phức tạp, nếu CSDL không trả về kết quả và tác tử cố gắng đàm phán lại tham số nhiều lần, hệ thống có nguy cơ rơi vào \textbf{Vòng lặp vô tận (Infinite Loop)}. Để ngăn chặn tuyệt đối tình trạng này, đồ án tích hợp 2 cơ chế bảo vệ:
+\begin{enumerate}
+    \item \textbf{Biến đếm Đệ quy Hạn mức (Recursion Counter Guard):} Thuộc tính \texttt{iteration\_count} tự động tăng thêm 1 sau mỗi lần đồ thị quay về \texttt{ROUTER\_NODE}. Khi $\texttt{iteration\_count} \ge 3$, cạnh có điều kiện (Conditional Edge) ép buộc luồng nhảy ngay lập tức vào nút \texttt{SYNTHESIS\_NODE} với phản hồi báo lỗi lịch sự kèm hướng dẫn liên hệ trực tiếp nhân viên tổng đài.
+    \item \textbf{Cơ chế Lưu vết Trạng thái (Checkpointer Persistence):} Trạng thái đồ thị tại mỗi bước chuyển đổi được lưu trữ với khóa phân vùng \texttt{session\_id}, cho phép phục hồi nguyên vẹn ngữ cảnh nếu dịch vụ bị tái khởi động giữa chừng.
+\end{enumerate}

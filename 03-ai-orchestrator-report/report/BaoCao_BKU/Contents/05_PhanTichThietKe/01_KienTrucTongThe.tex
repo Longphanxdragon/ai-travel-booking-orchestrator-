@@ -1,0 +1,103 @@
+\section{Thiết kế Kiến trúc Tổng thể Hệ thống (System Architecture Design)}
+\label{sec:kien_truc_tong_the}
+
+Để đáp ứng đồng thời các yêu cầu phi chức năng khắt khe về độ trễ ($< 1.5$s), tính toàn vẹn dữ liệu (100\% ACID), và khả năng mở rộng đa kênh, hệ thống được thiết kế theo mô hình \textbf{Kiến trúc Vi dịch vụ Phân tầng Tách rời (Layered Decoupled Microservices Architecture)}. Toàn bộ hệ thống được chia thành 4 phân tầng độc lập, giao tiếp thông qua giao thức RESTful JSON và hàng đợi bất đồng bộ.
+
+\subsection{Các Phân tầng Chức năng Cốt lõi}
+\label{subsec:layered_subsystems}
+
+\begin{enumerate}
+    \item \textbf{Tầng 1: Cổng Giao tiếp Ngoại vi \& Bảo mật (API Gateway \& Security Layer):}
+    \begin{itemize}
+        \item Đóng vai trò là điểm tiếp nhận duy nhất (Single Entrypoint) cho toàn bộ lưu lượng tin nhắn từ Facebook Messenger, Zalo OA, và Webchat Widget.
+        \item Thực thi xác thực chữ ký Webhook (HMAC SHA256) nhằm ngăn chặn tấn công giả mạo (Spoofing).
+        \item Tích hợp ngay lập tức module \textbf{PII Anonymizer}: Toàn bộ nội dung tin nhắn được lọc qua bộ biểu thức chính quy (Regex) tất định để che số điện thoại và email của người dùng trước khi chuyển tiếp vào lõi AI, bảo đảm tuân thủ Nghị định 13/2023/NĐ-CP.
+    \end{itemize}
+
+    \item \textbf{Tầng 2: Bộ não Đa Tác tử Điều phối (Multi-Agent Reasoning Core):}
+    \begin{itemize}
+        \item Xây dựng trên nền tảng \textbf{LangGraph StateGraph}, điều phối luồng suy luận thông qua một Biến trạng thái dùng chung (\texttt{AgentState}).
+        \item \textbf{Orchestrator Agent (Tác tử Nhạc trưởng):} Tiếp nhận câu hỏi đã làm sạch PII, phân tích ý định, lập kế hoạch hành động (Planning), và kích hoạt các tác tử chuyên gia tương ứng.
+        \item \textbf{Bus Specialist Agent (Chuyên gia Xe khách):} Quản lý nghiệp vụ vận tải, chịu trách nhiệm gọi công cụ truy vấn lịch trình, giá vé và số ghế trống.
+        \item \textbf{Hotel Specialist Agent (Chuyên gia Lưu trú):} Quản lý nghiệp vụ khách sạn, chịu trách nhiệm kiểm tra phòng trống và kết nối tới động cơ tìm kiếm chính sách.
+        \item \textbf{Cross-Domain Constraint Solver:} Module chuyên biệt giải quyết bài toán ràng buộc chéo CSP, tính toán độ lệch thời gian $\Delta T$ và đưa ra phương án xử lý lịch trình.
+    \end{itemize}
+
+    \item \textbf{Tầng 3: Tầng Dữ liệu Nền tảng \& Tìm kiếm Lai (Ground Truth \& Retrieval Layer):}
+    \begin{itemize}
+        \item \textbf{PostgreSQL 16 Relational Engine:} Lưu trữ dữ liệu tồn kho thời gian thực (\texttt{bus\_trips}, \texttt{hotel\_rooms}) và các giao dịch giữ chỗ tạm thời (\texttt{reservations}). Cung cấp cơ chế khóa hàng bi quan (\texttt{FOR UPDATE}) bảo đảm tính toàn vẹn ACID.
+        \item \textbf{Qdrant Vector Database:} Lưu trữ không gian vector đa chiều phục vụ tìm kiếm chính sách. Hỗ trợ cơ chế Hybrid Collection kết hợp đồng thời Dense Vector (nét nghĩa ngữ cảnh) và Sparse Vector (tần suất từ khóa BM25).
+        \item \textbf{VeXeRe Live Adapter:} Bộ chuyển đổi giao tiếp mạng (Network Adapter) sử dụng Playwright không giao diện (Headless Chromium) để bóc tách dữ liệu tồn kho trực tiếp từ các hãng xe lớn khi cần kiểm tra chéo ngoài thực tế.
+    \end{itemize}
+
+    \item \textbf{Tầng 4: Đường ống Bánh đà Dữ liệu Độc quyền (Proprietary Data Flywheel):}
+    \begin{itemize}
+        \item Hoạt động hoàn toàn bất đồng bộ thông qua cơ chế \texttt{BackgroundTasks} của FastAPI.
+        \item Sau khi câu trả lời được gửi về cho người dùng (hoàn tất luồng chính $< 1.2$s), tác vụ ngầm bóc tách các thực thể giá trị (Điểm đi, điểm đến, ngày khởi hành, hạng xe, yêu cầu thú cưng) lưu vào bảng hồ dữ liệu \texttt{travel\_intents\_lake}.
+        \item Tạo lập kho dữ liệu độc quyền đã được lọc sạch rác phục vụ phân tích xu hướng thị trường và huấn luyện tinh chỉnh (Fine-tuning) các mô hình ngôn ngữ chuyên ngành.
+    \end{itemize}
+\end{enumerate}
+
+\subsection{Sơ đồ Kiến trúc Phân tầng Hệ thống (TikZ Architectural Blueprint)}
+\label{subsec:tikz_architecture}
+
+\begin{figure}[h!]
+\centering
+\begin{tikzpicture}[
+    node distance=1.2cm and 1.5cm,
+    font=\footnotesize\sffamily,
+    box/.style={draw, rounded corners=3pt, thick, align=center, fill=white, drop shadow},
+    client/.style={box, fill=blue!10, text width=2.8cm, minimum height=0.9cm},
+    gateway/.style={box, fill=orange!15, text width=3.2cm, minimum height=0.9cm},
+    agent/.style={box, fill=teal!15, text width=2.6cm, minimum height=0.9cm},
+    db/.style={box, fill=purple!15, text width=3.0cm, minimum height=0.9cm},
+    flywheel/.style={box, fill=green!15, text width=3.2cm, minimum height=0.9cm},
+    arrow/.style={->, >=stealth, thick}
+]
+
+% Tầng 0: Khách hàng
+\node[client] (user) {\textbf{Khách hàng Đa kênh}\\(Zalo OA / FB / Web)};
+
+% Tầng 1: Gateway & PII
+\node[gateway, right=1.8cm of user] (gw) {\textbf{FastAPI Gateway}\\\& HMAC Validator};
+\node[gateway, below=0.6cm of gw] (pii) {\textbf{PII Anonymizer}\\(Che SĐT / Email)};
+
+% Tầng 2: Multi-Agent Core
+\node[agent, right=2.0cm of gw, yshift=-0.5cm] (orch) {\textbf{Orchestrator Agent}\\(StateGraph Engine)};
+\node[agent, above right=0.3cm and 1.2cm of orch] (bus_agent) {\textbf{Bus Specialist}\\(Tool Execution)};
+\node[agent, right=1.2cm of orch] (hotel_agent) {\textbf{Hotel Specialist}\\(Tool Execution)};
+\node[agent, below right=0.3cm and 1.2cm of orch] (solver) {\textbf{Constraint Solver}\\(Cross-domain CSP)};
+
+% Tầng 3: Data Layer
+\node[db, right=1.5cm of bus_agent] (pg_bus) {\textbf{PostgreSQL 16}\\(Bus ACID Locking)};
+\node[db, right=1.5cm of hotel_agent] (pg_hotel) {\textbf{PostgreSQL 16}\\(Hotel ACID Locking)};
+\node[db, right=1.5cm of solver] (qdrant) {\textbf{Qdrant Hybrid DB}\\(BM25 + Dense RRF)};
+
+% Tầng 4: Data Flywheel
+\node[flywheel, below=1.8cm of pii] (lake) {\textbf{Data Flywheel Lake}\\(\texttt{travel\_intents\_lake})};
+
+% Kết nối luồng chính
+\draw[arrow] (user) -- node[above] {\scriptsize POST /chat} (gw);
+\draw[arrow] (gw) -- (pii);
+\draw[arrow] (pii) -| node[above, near end] {\scriptsize Clean Query} (orch);
+
+\draw[arrow] (orch) -- node[above, sloped] {\scriptsize Intent} (bus_agent);
+\draw[arrow] (orch) -- node[above] {\scriptsize Intent} (hotel_agent);
+\draw[arrow] (bus_agent) -- (solver);
+\draw[arrow] (hotel_agent) -- (solver);
+\draw[arrow] (solver) -- node[below, sloped] {\scriptsize Plan \& Gap} (orch);
+
+\draw[arrow] (bus_agent) -- node[above] {\scriptsize SQL} (pg_bus);
+\draw[arrow] (hotel_agent) -- node[above] {\scriptsize SQL} (pg_hotel);
+\draw[arrow] (hotel_agent) -- node[above, sloped] {\scriptsize RRF} (qdrant);
+
+% Luồng phản hồi
+\draw[arrow, dashed, red] (orch.west) -- ++(-0.5,0) |- node[below, near end] {\scriptsize JSON Response $< 1.5$s} (user.south);
+
+% Luồng ngầm Data Flywheel
+\draw[arrow, dotted, darkgray, thick] (gw.south) -- node[left] {\scriptsize Async Task (0ms)} (lake.north);
+
+\end{tikzpicture}
+\caption{Sơ đồ Kiến trúc Phân tầng Toàn diện của Hệ thống AI Travel Booking Orchestrator}
+\label{fig:system_architecture_diagram}
+\end{figure}

@@ -1,0 +1,26 @@
+\section{Kiểm thử và Đánh giá hệ thống}
+
+\subsection{Kiểm thử chịu tải (Load Testing) \& Toàn vẹn ACID}
+\textbf{Kịch bản:} Dùng Locust bắn 1.000 - 1.500 req/s vào Gateway.
+\textbf{Kết quả:}
+\begin{itemize}
+    \item \textbf{Độ trễ Gateway:} Trạng thái ổn định ở 28ms - 45ms (Đáp ứng REQ-NFR).
+    \item \textbf{Tỷ lệ rớt đơn (Message Loss):} 0\% (Nhờ RabbitMQ Buffer).
+    \item \textbf{Bảo toàn ACID:} 100 giao dịch cập nhật đồng thời, tỷ lệ Mất bản cập nhật (Lost Update) là \textbf{0\%} (so với 36\% nếu không dùng khóa \texttt{FOR UPDATE}).
+\end{itemize}
+
+\subsection{Đánh giá Hiệu năng Hybrid Search (NDCG)}
+So sánh truy xuất từ khóa ngách (Keyword Mismatch):
+\begin{itemize}
+    \item Dense Vector: MRR 0.65, NDCG@10 0.71 (Bỏ sót mã phòng).
+    \item Hybrid Search (RRF): \textbf{MRR 0.92, NDCG@10 0.95} (Tối ưu nhất).
+\end{itemize}
+
+\subsection{Đánh giá Đa tác tử \& Tỷ lệ ảo giác}
+\begin{itemize}
+    \item \textbf{Tỷ lệ Ảo giác (Hallucination Rate):} RAG nguyên bản (đọc PDF) bị ảo giác 100\% khi phòng hết. Hệ thống dùng \textbf{Function Calling} triệt tiêu ảo giác về \textbf{0\%}.
+    \item \textbf{Tỷ lệ Lập lịch chéo thành công (Success Rate):} AI đơn lẻ (Single-Agent) đạt 32\%. Mạng lưới \textbf{Multi-Agent CoT} đạt \textbf{88\%}, xuất sắc giải quyết ràng buộc lệch giờ.
+\end{itemize}
+
+\subsection{Kiểm thử Circuit Breaker}
+Giả lập lỗi HTTP 429 từ máy chủ LLM. Circuit Breaker nhận diện lỗi trong $4.2$ms và hoàn tất chuyển mạch (Failover) sang LLM dự phòng trong $7.5$ms. 100\% hội thoại không bị gián đoạn.

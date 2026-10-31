@@ -1,0 +1,101 @@
+\section{Tổng quan Mô hình Ca Sử dụng (Use Case Model Overview)}
+\label{sec:tong_quan_use_case}
+
+Mô hình Ca Sử dụng (Use Case Model) đóng vai trò là cầu nối cốt lõi giữa các yêu cầu nghiệp vụ đã phân tích ở Chương 3 và các quyết định thiết kế kiến trúc ở Chương 5. Đối với một hệ thống hội thoại hướng tác vụ kết hợp thương mại đa kênh (Omnichannel Task-Oriented AI), mô hình ca sử dụng không chỉ phản ánh tương tác giữa người dùng cuối với phần mềm, mà còn đặc tả sự phối hợp động giữa các tác tử trí tuệ nhân tạo (AI Agents) và các tác nhân nghiệp vụ phía doanh nghiệp.
+
+\subsection{Xác định Các Tác nhân Hệ thống (Actors Identification)}
+\label{subsec:actors_identification}
+
+Hệ thống xác định 3 nhóm tác nhân chính tham gia vào các tiến trình nghiệp vụ:
+
+\begin{enumerate}
+    \item \textbf{Khách hàng (Customer / End-User):}
+    \begin{itemize}
+        \item Là người dùng cuối có nhu cầu tìm kiếm, tư vấn và đặt lịch trình di chuyển hoặc lưu trú.
+        \item Tương tác với hệ thống hoàn toàn thông qua ngôn ngữ tự nhiên (tiếng Việt) trên các nền tảng nhắn tin phổ biến: Facebook Messenger, Zalo OA hoặc tiện ích Webchat.
+        \item Không cần cài đặt bất kỳ ứng dụng chuyên biệt nào hay thao tác trên các giao diện phức tạp.
+    \end{itemize}
+
+    \item \textbf{Chủ Doanh nghiệp / Nhân viên Vận hành (Business Owner / Operator / Receptionist):}
+    \begin{itemize}
+        \item Là chủ các chuỗi homestay, khách sạn địa phương hoặc nhân viên phòng vé của các nhà xe đối tác.
+        \item Tiếp nhận các thông báo đơn đặt chỗ nóng (Hot Leads / Confirmed Holds) được AI chuyển tiếp tức thời qua các kênh tin nhắn cá nhân (Telegram Bot, Zalo, hoặc Facebook Page Inbox).
+        \item Có quyền can thiệp vào luồng chat (Human Takeover) hoặc xác nhận chốt đơn bằng một thao tác bấm nút hoặc phản hồi tin nhắn trực tiếp trên điện thoại di động mà không cần sử dụng máy tính hay Web App.
+    \end{itemize}
+
+    \item \textbf{Hệ thống Ngoại vi (External Travel Systems / Adapters):}
+    \begin{itemize}
+        \item Bao gồm các nền tảng phân phối vé xe (VeXeRe API / Web Adapter) và các hệ thống quản lý phòng khách sạn (PMS / CSDL nội bộ PostgreSQL).
+        \item Cung cấp trạng thái tồn kho thời gian thực (số ghế trống, hạng phòng, giá cước) và thực thi các giao dịch giữ chỗ có điều kiện.
+    \end{itemize}
+\end{enumerate}
+
+\subsection{Sơ đồ Ca Sử dụng Tổng thể (System Use Case Diagram)}
+\label{subsec:use_case_diagram}
+
+Toàn bộ các ca sử dụng của hệ thống được phân rã thành 5 phân nhóm nghiệp vụ logic:
+\begin{enumerate}
+    \item \textit{Phân nhóm Tiếp nhận \& Bảo vệ Quyền riêng tư (Security \& Ingestion)}: UC-01.
+    \item \textit{Phân nhóm Tư vấn \& Tra cứu Nghiệp vụ (Consultation \& Retrieval)}: UC-02, UC-03.
+    \item \textit{Phân nhóm Điều phối Đa Tác tử \& Giải quyết Lệch giờ (Multi-Agent CSP)}: UC-04.
+    \item \textit{Phân nhóm Giao dịch An toàn \& Giữ chỗ (ACID Reservation)}: UC-05.
+    \item \textit{Phân nhóm Thông báo Tin nhắn \& Bánh đà Dữ liệu (ChatOps \& Data Flywheel)}: UC-06, UC-07.
+\end{enumerate}
+
+\begin{figure}[h!]
+\centering
+\begin{tikzpicture}[
+    scale=0.88, every node/.style={transform shape},
+    font=\small\sffamily,
+    actor/.style={draw, thick, circle, minimum size=0.8cm, align=center, fill=blue!10},
+    usecase/.style={draw, thick, ellipse, minimum width=3.4cm, minimum height=0.9cm, align=center, fill=yellow!15},
+    systembox/.style={draw, thick, dashed, rectangle, rounded corners=6pt, fill=gray!5, inner sep=15pt}
+]
+
+% Biên giới hệ thống (System Boundary)
+\node[systembox, minimum width=10.5cm, minimum height=14.0cm, label={[anchor=north, yshift=-0.2cm]\textbf{\large HỆ THỐNG AI TRAVEL BOOKING ORCHESTRATOR}}] (sys) at (4.5, -4.8) {};
+
+% Các Tác nhân (Actors)
+\node[actor] (user) at (-1.8, -3.0) {};
+\node[below=0.1cm of user] {\textbf{Khách hàng}};
+
+\node[actor] (owner) at (10.8, -3.0) {};
+\node[below=0.1cm of owner] {\textbf{Chủ Doanh nghiệp}};
+
+\node[actor] (ext) at (10.8, -8.0) {};
+\node[below=0.1cm of ext] {\textbf{Hệ thống Ngoại vi}\\\scriptsize (VeXeRe / PostgreSQL)};
+
+% Các Ca Sử dụng (Use Cases)
+\node[usecase] (uc1) at (4.5, 0.5) {\textbf{UC-01:} Tiếp nhận \&\\Ẩn danh hóa PII};
+\node[usecase] (uc2) at (4.5, -1.2) {\textbf{UC-02:} Tra cứu Xe khách\\Thời gian thực};
+\node[usecase] (uc3) at (4.5, -2.9) {\textbf{UC-03:} Tra cứu Lưu trú \&\\Chính sách Hybrid RRF};
+\node[usecase] (uc4) at (4.5, -4.6) {\textbf{UC-04:} Điều phối Đa Tác tử\\Giải quyết Lệch giờ CSP};
+\node[usecase] (uc5) at (4.5, -6.3) {\textbf{UC-05:} Khóa Giữ chỗ Tạm thời\\An toàn với ACID};
+\node[usecase] (uc6) at (4.5, -8.0) {\textbf{UC-06:} Thông báo ChatOps \&\\Can thiệp Tin nhắn};
+\node[usecase] (uc7) at (4.5, -9.7) {\textbf{UC-07:} Trích xuất Tri thức\\Bánh đà Dữ liệu ngầm};
+
+% Liên kết từ Khách hàng
+\draw[thick] (user) -- (uc1);
+\draw[thick] (user) -- (uc2);
+\draw[thick] (user) -- (uc3);
+\draw[thick] (user) -- (uc4);
+\draw[thick] (user) -- (uc5);
+
+% Liên kết từ Chủ Doanh nghiệp
+\draw[thick] (owner) -- (uc6);
+
+% Liên kết từ Hệ thống Ngoại vi
+\draw[thick] (ext) -- (uc2);
+\draw[thick] (ext) -- (uc3);
+\draw[thick] (ext) -- (uc5);
+
+% Include & Extend relationships
+\draw[->, >=stealth, dashed, thick] (uc4) -- node[right, font=\scriptsize] {$\ll include \gg$} (uc2);
+\draw[->, >=stealth, dashed, thick] (uc4) -- node[right, font=\scriptsize] {$\ll include \gg$} (uc3);
+\draw[->, >=stealth, dashed, thick] (uc5) -- node[right, font=\scriptsize] {$\ll trigger \gg$} (uc6);
+\draw[->, >=stealth, dotted, thick] (uc1) to[bend right=40] node[left, font=\scriptsize] {$\ll async \gg$} (uc7);
+
+\end{tikzpicture}
+\caption{Sơ đồ Ca Sử dụng Tổng thể của Nền tảng AI Travel Booking Orchestrator}
+\label{fig:use_case_diagram}
+\end{figure}

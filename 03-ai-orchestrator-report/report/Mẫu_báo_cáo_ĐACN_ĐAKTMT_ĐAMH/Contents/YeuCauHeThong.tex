@@ -1,0 +1,23 @@
+\section{Yêu cầu hệ thống}
+
+\subsection{Yêu cầu chức năng}
+Hệ thống được phân rã thành các Vi dịch vụ (Microservices) cốt lõi:
+\begin{enumerate}
+    \item \textbf{omni-gateway-service:} Tiếp nhận Webhook từ Zalo, Facebook, xác thực chữ ký HMAC SHA256. Phân luồng: câu hỏi tư vấn đẩy sang AI, đơn đặt hàng đẩy vào RabbitMQ.
+    \item \textbf{ai-agent-service:} 
+    \begin{itemize}
+        \item Lập chỉ mục Hybrid Search (BM25 + Vector) vào Qdrant.
+        \item Xử lý Multi-Agent Orchestrator với các Tool (Function Calling).
+        \item Cầu dao tự động Circuit Breaker chuyển mạch LLM.
+    \end{itemize}
+    \item \textbf{order-processing-service:} Worker tiêu thụ bất đồng bộ tin nhắn từ RabbitMQ. Thực hiện khóa ACID PostgreSQL cập nhật tồn kho.
+    \item \textbf{tenant-config-service:} Quản lý cấu hình cô lập dữ liệu người thuê (Multi-tenant).
+\end{enumerate}
+
+\subsection{Yêu cầu phi chức năng}
+\begin{itemize}
+    \item \textbf{Hiệu năng và Chịu tải:} Chịu được tải đỉnh $> 1.000$ đơn/phút với tỉ lệ rớt tin nhắn $0\%$. Độ trễ Gateway $< 50$ms.
+    \item \textbf{Tính toàn vẹn dữ liệu:} $100\%$ không mất bản cập nhật khi nhiều luồng đồng thời (ACID Concurrency).
+    \item \textbf{AI \& Truy xuất:} Độ chính xác truy xuất cao, giảm tỷ lệ ảo giác tồn kho xuống $0\%$. Lập lịch chéo thành công.
+    \item \textbf{Độ sẵn sàng:} Chuyển mạch Failover AI Endpoint dưới $10$ms. Uptime $99.9\%$.
+\end{itemize}

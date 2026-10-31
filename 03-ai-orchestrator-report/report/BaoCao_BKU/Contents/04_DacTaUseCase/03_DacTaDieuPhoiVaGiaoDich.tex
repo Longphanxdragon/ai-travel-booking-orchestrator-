@@ -1,0 +1,103 @@
+\section{Đặc tả Nhóm Ca Sử dụng Điều phối Đa Tác tử và Giao dịch ACID}
+\label{sec:dacta_dieuphoi_giaodich}
+
+Đây là hai ca sử dụng thể hiện rõ nét nhất chiều sâu học thuật của đề tài: Giải quyết bài toán thỏa mãn ràng buộc chéo (Cross-domain CSP) và bảo toàn tính toàn vẹn dữ liệu trong môi trường cạnh tranh tải trọng cao.
+
+\subsection{UC-04: Điều phối Đa Tác tử Tự động Giải quyết Ràng buộc Lệch giờ (CSP Combo)}
+\label{subsec:spec_uc04}
+
+\begin{table}[h!]
+\centering
+\small
+\begin{tabular}{|p{3.2cm}|p{11.5cm}|}
+\hline
+\textbf{Tên Ca Sử dụng} & \textbf{UC-04: Điều phối Đa Tác tử Tự động Giải quyết Ràng buộc Lệch giờ} \\
+\hline
+\textbf{Tác nhân} & Khách hàng, Orchestrator Agent, Bus Agent, Hotel Agent, Constraint Solver. \\
+\hline
+\textbf{Mục tiêu} & Tự động kết hợp lịch trình di chuyển và lưu trú, phát hiện xung đột thời gian ($\Delta T > 3$ giờ) và đàm phán chính sách nhận phòng sớm để giải cứu lịch trình của khách hàng. \\
+\hline
+\textbf{Tiền điều kiện} & Cả hai nguồn dữ liệu xe và phòng đều sẵn sàng; câu hỏi mang ý định \texttt{COMBO\_INQUIRY}. \\
+\hline
+\textbf{Luồng sự kiện chính} & 
+\begin{enumerate}
+    \item Khách hàng gửi yêu cầu combo: \textit{"Tối mai có xe phòng đôi đi Đà Lạt và khách sạn nào cho mang chó không em? Muốn đến nơi nhận phòng ngay"}.
+    \item Orchestrator khởi tạo trạng thái chia sẻ \texttt{AgentState}, nhận diện yêu cầu kép.
+    \item Đồ thị kích hoạt song song (Parallel Dispatch):
+    \begin{itemize}
+        \item Bus Agent gọi công cụ tìm chuyến xe đêm $\rightarrow$ Trả về xe Điền Linh đến nơi lúc $T_{\text{arr}} = \text{06:15}$.
+        \item Hotel Agent gọi công cụ tìm phòng cho phép chó cưng $\rightarrow$ Trả về Homestay Thung Lũng Mây, giờ nhận phòng tiêu chuẩn $T_{\text{checkin}} = \text{14:00}$.
+    \end{itemize}
+    \item Module \texttt{ConstraintSolver} tính toán độ lệch thời gian:
+    \begin{equation}
+    \Delta T = 14:00 - 06:15 = 7\text{ giờ } 45\text{ phút} > 3.0\text{ giờ} \implies \mathbb{I}_{\text{conflict}} = 1
+    \end{equation}
+    \item Phát hiện xung đột (Khách phải chờ gần 8 tiếng ngoài đường), Orchestrator điều hướng luồng suy luận sang nút \texttt{CONFLICT\_RESOLVER}.
+    \item Tác tử gọi Qdrant Hybrid Search trích xuất chính sách nhận phòng sớm: \textit{"Hỗ trợ nhận phòng sớm từ 06:00 với phụ phí 150.000 VNĐ hoặc giữ hành lý miễn phí tại quầy lễ tân"}.
+    \item Orchestrator tổng hợp toàn bộ giải pháp thành câu trả lời hoàn chỉnh kèm cảnh báo lịch trình thông minh:
+    \textit{"⚠️ Lưu ý lịch trình: Xe đến lúc 06:15 nhưng giờ nhận phòng là 14:00 (Chờ 8 tiếng). Khách sạn hỗ trợ nhận phòng sớm phụ thu 150.000đ hoặc giữ hành lý miễn phí tại quầy lễ tân."}
+\end{enumerate} \\
+\hline
+\textbf{Luồng ngoại lệ} & 
+\textit{Khách sạn không hỗ trợ nhận phòng sớm:} Orchestrator tự động quay lui (Backtracking), đề xuất khách hàng đổi sang chuyến xe ban ngày (khởi hành sáng, đến nơi lúc 14:00 trùng khớp giờ nhận phòng) hoặc gợi ý khách sạn khác có chính sách linh hoạt hơn. \\
+\hline
+\textbf{Hậu điều kiện} & Toàn bộ lịch trình di chuyển và lưu trú khớp logic toán học $100\%$, loại bỏ hoàn toàn rủi ro khách hàng bị bơ vơ khi đến nơi. \\
+\hline
+\end{tabular}
+\caption{Bản Đặc tả Chi tiết Ca Sử dụng UC-04}
+\label{tab:spec_uc04}
+\end{table}
+
+\subsection{UC-05: Khóa Giữ chỗ Tạm thời An toàn với Giao dịch ACID}
+\label{subsec:spec_uc05}
+
+\begin{table}[h!]
+\centering
+\small
+\begin{tabular}{|p{3.2cm}|p{11.5cm}|}
+\hline
+\textbf{Tên Ca Sử dụng} & \textbf{UC-05: Khóa Giữ chỗ Tạm thời An toàn với Giao dịch ACID} \\
+\hline
+\textbf{Tác nhân} & Khách hàng, Transaction Worker, PostgreSQL Relational Engine. \\
+\hline
+\textbf{Mục tiêu} & Thực thi giao dịch trừ tồn kho và tạo bản ghi giữ chỗ tạm thời (TTL = 15 phút) có bảo đảm khóa bi quan nhằm triệt tiêu $100\%$ rủi ro bán khống (Overbooking). \\
+\hline
+\textbf{Tiền điều kiện} & Khách hàng xác nhận giữ chỗ; tài nguyên ghế xe hoặc phòng còn tồn kho $\ge 1$. \\
+\hline
+\textbf{Luồng sự kiện chính} & 
+\begin{enumerate}
+    \item Khách hàng yêu cầu: \textit{"Giữ cho tôi 2 ghế chuyến Điền Linh 23h này nhé"}.
+    \item Hệ thống khởi tạo giao dịch: \texttt{BEGIN TRANSACTION ISOLATION LEVEL READ COMMITTED}.
+    \item Thực thi câu lệnh khóa độc quyền cấp dòng trên PostgreSQL:
+    \begin{center}
+    \texttt{SELECT available\_seats FROM bus\_trips WHERE trip\_id = 'BUS-SG-DL-2300' FOR UPDATE;}
+    \end{center}
+    \item Kiểm tra điều kiện tồn kho thực tế: \texttt{available\_seats = 4 >= 2}.
+    \item Tiến hành cập nhật giảm tồn kho:
+    \begin{center}
+    \texttt{UPDATE bus_trips SET available\_seats = available\_seats - 2 WHERE trip\_id = 'BUS-SG-DL-2300';}
+    \end{center}
+    \item Chèn bản ghi giữ chỗ tạm thời vào bảng \texttt{reservations}:
+    \begin{itemize}
+        \item \texttt{reservation\_id}: UUID ngẫu nhiên.
+        \item \texttt{session\_id}: Khóa phiên của khách hàng.
+        \item \texttt{status}: 'HOLD'.
+        \item \texttt{expires\_at}: $\text{NOW}() + 15\text{ phút}$.
+    \end{itemize}
+    \item Thực thi lệnh \texttt{COMMIT TRANSACTION}, giải phóng khóa độc quyền.
+    \item Trả về mã giữ chỗ tạm thời kèm đồng hồ đếm ngược 15 phút cho khách hàng.
+\end{enumerate} \\
+\hline
+\textbf{Luồng ngoại lệ (Tranh chấp đồng thời - Concurrency Conflict)} & 
+Nếu một giao dịch khác đã mua hết ghế trong lúc tiến trình đang chờ khóa dẫn đến điều kiện \texttt{available\_seats < 2}:
+\begin{enumerate}
+    \item Giao dịch lập tức thực thi \texttt{ROLLBACK TRANSACTION}.
+    \item Giải phóng khóa và trả về thông báo hết chỗ chính xác tuyệt đối, ngăn chặn $100\%$ hiện tượng bán khống.
+\end{enumerate} \\
+\hline
+\textbf{Hậu điều kiện} & Dữ liệu tồn kho được bảo toàn nguyên vẹn; không xảy ra hiện tượng mất bản cập nhật (Lost Update) ngay cả khi có hàng trăm yêu cầu tranh chấp cùng một giây. \\
+\hline
+\end{tabular}
+\caption{Bản Đặc tả Chi tiết Ca Sử dụng UC-05}
+\label{tab:spec_uc05}
+\end{table}

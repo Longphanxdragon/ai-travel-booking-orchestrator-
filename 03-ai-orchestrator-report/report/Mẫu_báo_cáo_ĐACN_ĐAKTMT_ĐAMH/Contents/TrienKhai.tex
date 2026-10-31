@@ -1,0 +1,14 @@
+\section{Triển khai hệ thống}
+
+\subsection{Mô hình triển khai Docker Compose}
+Hệ thống được đóng gói thành Container chuyên biệt, phân chia 2 profiles:
+\begin{itemize}
+    \item \textbf{Profile Infra:} PostgreSQL (kèm pgvector), RabbitMQ, Qdrant.
+    \item \textbf{Profile Services:} omni-gateway, ai-agent (Multi-Agent API), order-worker.
+\end{itemize}
+
+\subsection{Nginx Reverse Proxy \& TLS}
+Cấu hình Nginx đứng trước API Gateway, mã hóa lưu lượng bằng HTTPS/SSL. Định tuyến cổng 443 vào container \texttt{omni-gateway} ở cổng 8000.
+
+\subsection{Giám sát thời gian thực (Observability)}
+Tích hợp Prometheus và Grafana để thu thập Metric từ FastAPI (\texttt{/metrics}) và RabbitMQ Management API. Thiết lập cảnh báo (Alert) qua Telegram khi hàng đợi vượt quá 1.000 tin nhắn.

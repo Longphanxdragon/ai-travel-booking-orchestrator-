@@ -1,0 +1,48 @@
+\section{Hiện thực hệ thống}
+
+\subsection{Môi trường và Công nghệ}
+\begin{itemize}
+    \item \textbf{Ngôn ngữ:} Python 3.11, FastAPI (Asynchronous I/O).
+    \item \textbf{Message Broker:} RabbitMQ (aio-pika).
+    \item \textbf{Database:} PostgreSQL 16, SQLAlchemy Async.
+    \item \textbf{AI Framework:} LangGraph, Pydantic v2 (Function Calling Schema).
+    \item \textbf{Vector DB:} Qdrant (Hỗ trợ BM25 và HNSW).
+\end{itemize}
+
+\subsection{Hiện thực Khóa bi quan ACID}
+\begin{lstlisting}[language=Python, title=Trích xuất mã nguồn khóa ACID]
+lock_query = text('''
+    SELECT tenant_id, available_rooms 
+    FROM hotel_inventories 
+    WHERE room_id = :rid FOR UPDATE
+''')
+res = await session.execute(lock_query, {"rid": room_id})
+# Tien hanh tru ton kho va COMMIT
+\end{lstlisting}
+
+\subsection{Hiện thực Hybrid Search với Qdrant và RRF}
+\begin{lstlisting}[language=Python, title=Mã nguồn truy vấn Hybrid Search]
+prefetch_dense = Prefetch(query=dense_vec, using="dense_embedding", limit=10)
+prefetch_sparse = Prefetch(query=Query(**sparse_vec), using="sparse_bm25", limit=10)
+
+results = qdrant.query_points(
+    collection_name="travel_docs",
+    prefetch=[prefetch_dense, prefetch_sparse],
+    query=Query(fusion="rrf"), # Su dung thuat toan RRF
+    limit=5,
+)
+\end{lstlisting}
+
+\subsection{Hiện thực Đồ thị Multi-Agent (LangGraph)}
+\begin{lstlisting}[language=Python, title=Khởi tạo Đồ thị Đa tác tử]
+graph = StateGraph(AgentState)
+graph.add_node("orchestrator", orchestrator_agent)
+graph.add_node("bus_expert", bus_agent_with_tools)
+graph.add_node("hotel_expert", hotel_agent_with_tools)
+
+# Dinh tuyen (Router) bang Orchestrator
+graph.add_conditional_edges("orchestrator", route_next_step)
+graph.add_edge("bus_expert", "orchestrator")
+graph.add_edge("hotel_expert", "orchestrator")
+app = graph.compile()
+\end{lstlisting}

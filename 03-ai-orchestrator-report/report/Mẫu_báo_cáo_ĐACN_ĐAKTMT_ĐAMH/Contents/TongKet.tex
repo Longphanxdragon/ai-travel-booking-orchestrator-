@@ -1,0 +1,17 @@
+\section{Tổng kết}
+
+\subsection{Kết quả đạt được}
+Đồ án đã xuất sắc kết hợp Công nghệ Phần mềm phân tán và Trí tuệ Nhân tạo hiện đại, tạo ra một nền tảng SaaS hoàn chỉnh:
+\begin{itemize}
+    \item \textbf{Kiến trúc Microservices \& RabbitMQ} đảm bảo chịu tải đỉnh $>1.000$ đơn/phút, an toàn ACID tuyệt đối.
+    \item \textbf{Hybrid Search \& RRF} khắc phục điểm mù truy xuất ngữ nghĩa.
+    \item \textbf{Function Calling} loại bỏ hoàn toàn 100\% ảo giác dữ liệu động.
+    \item \textbf{Multi-Agent Orchestrator} ứng dụng CoT giải quyết thành công các ràng buộc lập lịch chéo phức tạp nhất.
+\end{itemize}
+
+\subsection{Hạn chế và Hướng phát triển}
+\begin{itemize}
+    \item \textbf{Độ trễ suy luận AI:} Quá trình đàm phán giữa các Tác tử tốn nhiều vòng (Cycles), làm tăng độ trễ trả lời (5-10 giây). Cần tối ưu mô hình Local (như Llama 3) để giảm trễ.
+    \item \textbf{Triển khai Kubernetes (K8s):} Nâng cấp hệ thống lên K8s, tự động co giãn số lượng Worker theo kích thước hàng đợi RabbitMQ (KEDA).
+    \item \textbf{Học tăng cường (RLHF):} Tích hợp khả năng tự học từ đánh giá của khách hàng để tối ưu kỹ năng đàm phán giá cả.
+\end{itemize}

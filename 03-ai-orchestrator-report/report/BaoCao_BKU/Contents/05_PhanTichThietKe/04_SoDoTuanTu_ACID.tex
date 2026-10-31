@@ -1,0 +1,117 @@
+\section{Đặc tả Sơ đồ Tuần tự Chi tiết (Sequence Diagrams)}
+\label{sec:so_do_tuan_tu}
+
+Để mô tả sự tương tác động giữa các thành phần phần mềm trong hệ thống, mục này trình bày hai sơ đồ tuần tự chuẩn mực: Sơ đồ điều phối suy luận đa tác tử (Multi-Agent CoT Sequence) và Sơ đồ giao dịch an toàn với khóa bi quan ACID (Pessimistic Locking Reservation Sequence).
+
+\subsection{Sơ đồ Tuần tự 1: Xử lý Yêu cầu Combo Đa miền \& Đàm phán Lệch giờ}
+\label{subsec:seq_multi_agent_cot}
+
+Khi khách hàng gửi yêu cầu phức tạp chứa cả hai dịch vụ xe và phòng, luồng thông điệp được thực thi qua các bước sau:
+
+\begin{figure}[h!]
+\centering
+\begin{tikzpicture}[
+    scale=0.88, every node/.style={transform shape},
+    font=\scriptsize\sffamily,
+    lifeline/.style={draw, thick, dashed, gray},
+    entity/.style={draw, thick, fill=blue!10, minimum width=1.6cm, minimum height=0.7cm, align=center},
+    msg/.style={->, >=stealth, thick},
+    ret/.style={<--, >=stealth, thick, dashed},
+    boxact/.style={draw, fill=yellow!20, minimum width=0.3cm}
+]
+
+% Các thực thể tham gia
+\node[entity] (usr) {Khách hàng};
+\node[entity, right=1.2cm of usr] (gw) {API Gateway};
+\node[entity, right=1.2cm of gw] (pii) {PII Filter};
+\node[entity, right=1.2cm of pii] (orch) {Orchestrator};
+\node[entity, right=1.2cm of orch] (bus) {Bus Agent};
+\node[entity, right=1.2cm of bus] (hotel) {Hotel Agent};
+\node[entity, right=1.2cm of hotel] (db) {PostgreSQL};
+
+% Đường sinh mệnh (Lifelines)
+\draw[lifeline] (usr) -- ++(0,-7.5);
+\draw[lifeline] (gw) -- ++(0,-7.5);
+\draw[lifeline] (pii) -- ++(0,-7.5);
+\draw[lifeline] (orch) -- ++(0,-7.5);
+\draw[lifeline] (bus) -- ++(0,-7.5);
+\draw[lifeline] (hotel) -- ++(0,-7.5);
+\draw[lifeline] (db) -- ++(0,-7.5);
+
+% Các thông điệp tuần tự
+\draw[msg] (usr.south) ++(0,-0.4) -- node[above] {1. POST /chat (Combo Sài Gòn - Đà Lạt)} ++(2.4,0);
+\draw[msg] (gw.south) ++(0,-0.8) -- node[above] {2. Validate HMAC \& Anonymize} ++(2.4,0);
+\draw[msg] (pii.south) ++(0,-1.2) -- node[above] {3. Cleaned Query} ++(2.4,0);
+
+\draw[msg] (orch.south) ++(0,-1.6) -- node[above] {4. Route: Intent COMBO} ++(2.4,0);
+\draw[msg] (bus.south) ++(0,-2.0) -- node[above] {5. SQL: check\_bus\_trips} ++(4.8,0);
+\draw[ret] (bus.south) ++(0,-2.5) -- node[above] {6. Trả về chuyến 23h, đến 06:15} ++(4.8,0);
+\draw[ret] (orch.south) ++(0,-3.0) -- node[above] {7. Update State (Arr: 06:15)} ++(2.4,0);
+
+\draw[msg] (orch.south) ++(0,-3.5) -- node[above] {8. Route: Check Room} ++(4.8,0);
+\draw[msg] (hotel.south) ++(0,-4.0) -- node[above] {9. SQL: check\_hotel\_rooms} ++(2.4,0);
+\draw[ret] (hotel.south) ++(0,-4.5) -- node[above] {10. Trả về phòng trống (Checkin 14:00)} ++(2.4,0);
+
+\draw[ret] (orch.south) ++(0,-5.0) -- node[above] {11. ConstraintSolver: $\Delta T = 7\text{h}45 > 3\text{h}$} ++(4.8,0);
+\draw[msg] (orch.south) ++(0,-5.5) -- node[above] {12. Fetch Early Check-in Policy} ++(4.8,0);
+\draw[ret] (orch.south) ++(0,-6.0) -- node[above] {13. Return Policy (Phụ thu 150K)} ++(4.8,0);
+
+\draw[ret] (gw.south) ++(0,-6.5) -- node[above] {14. Synthesize Markdown Response} ++(2.4,0);
+\draw[ret] (usr.south) ++(0,-7.0) -- node[above] {15. JSON Response ($< 1.2$s): Đã khớp lịch trình \& cảnh báo lệch giờ} ++(2.4,0);
+
+\end{tikzpicture}
+\caption{Sơ đồ Tuần tự Luồng Suy luận Đa Tác tử (Multi-Agent CoT Sequence)}
+\label{fig:seq_multi_agent}
+\end{figure}
+
+\subsection{Sơ đồ Tuần tự 2: Giữ chỗ An toàn với Giao dịch ACID và Khóa Bi quan}
+\label{subsec:seq_acid_reservation}
+
+Khi khách hàng bấm nút hoặc yêu cầu giữ chỗ (Hold Reservation), hệ thống tuyệt đối không thực hiện ghi nhận tùy tiện mà kích hoạt quy trình giao dịch khóa bi quan nghiêm ngặt:
+
+\begin{figure}[h!]
+\centering
+\begin{tikzpicture}[
+    scale=0.88, every node/.style={transform shape},
+    font=\scriptsize\sffamily,
+    lifeline/.style={draw, thick, dashed, gray},
+    entity/.style={draw, thick, fill=blue!10, minimum width=2.0cm, minimum height=0.7cm, align=center},
+    msg/.style={->, >=stealth, thick},
+    ret/.style={<--, >=stealth, thick, dashed}
+]
+
+% Các thực thể
+\node[entity] (usr) {Khách hàng};
+\node[entity, right=1.6cm of usr] (worker) {Reservation Worker};
+\node[entity, right=2.0cm of worker] (pg) {PostgreSQL 16};
+\node[entity, right=2.0cm of pg] (db_row) {Dòng bảng \texttt{bus\_trips}};
+
+% Đường sinh mệnh
+\draw[lifeline] (usr) -- ++(0,-7.0);
+\draw[lifeline] (worker) -- ++(0,-7.0);
+\draw[lifeline] (pg) -- ++(0,-7.0);
+\draw[lifeline] (db_row) -- ++(0,-7.0);
+
+% Luồng thông điệp
+\draw[msg] (usr.south) ++(0,-0.4) -- node[above] {1. Yêu cầu giữ 2 ghế chuyến BUS-SG-DL-2300} ++(2.8,0);
+\draw[msg] (worker.south) ++(0,-0.9) -- node[above] {2. \texttt{BEGIN TRANSACTION (READ COMMITTED)}} ++(3.0,0);
+\draw[msg] (worker.south) ++(0,-1.5) -- node[above] {3. \texttt{SELECT ... FOR UPDATE}} ++(3.0,0);
+
+\draw[msg] (pg.south) ++(0,-2.0) -- node[above] {4. Đặt Khóa độc quyền (Row-level Lock)} ++(3.0,0);
+\draw[ret] (worker.south) ++(0,-2.6) -- node[above] {5. Trả về: \texttt{available\_seats = 4}} ++(3.0,0);
+
+\draw[msg] (worker.south) ++(0,-3.2) -- node[above] {6. Kiểm tra: $4 \ge 2 \implies$ Thỏa mãn tồn kho} (worker.south) ++(0,-3.5);
+
+\draw[msg] (worker.south) ++(0,-4.0) -- node[above] {7. \texttt{UPDATE bus\_trips SET seats = 2}} ++(3.0,0);
+\draw[msg] (worker.south) ++(0,-4.6) -- node[above] {8. \texttt{INSERT INTO reservations (TTL = 15m)}} ++(3.0,0);
+\draw[msg] (worker.south) ++(0,-5.2) -- node[above] {9. \texttt{COMMIT TRANSACTION}} ++(3.0,0);
+
+\draw[msg] (pg.south) ++(0,-5.7) -- node[above] {10. Giải phóng khóa dòng (Unlock)} ++(3.0,0);
+\draw[ret] (usr.south) ++(0,-6.3) -- node[above] {11. Mã giữ chỗ \texttt{RES-8899} (Đếm ngược 15:00)} ++(2.8,0);
+
+\end{tikzpicture}
+\caption{Sơ đồ Tuần tự Giao dịch ACID Khóa Bi quan (Pessimistic Locking Reservation)}
+\label{fig:seq_acid_reservation}
+\end{figure}
+
+\textbf{Phân tích độ tin cậy:} Nếu có một tiến trình khác gửi yêu cầu đặt cùng chuyến xe này tại mili-giây thứ $t=1.5$, tiến trình đó sẽ bị phong tỏa tại bước số 3 (bị đưa vào hàng đợi chờ giải phóng khóa trên PostgreSQL). Khi tiến trình đầu tiên \texttt{COMMIT} ở bước số 9, tiến trình thứ hai mới được đọc dữ liệu và thấy \texttt{available\_seats} đã giảm từ $4 \rightarrow 2$. Điều này triệt tiêu $100\%$ hiện tượng Mất bản cập nhật (Lost Update) và tranh chấp tài nguyên.
