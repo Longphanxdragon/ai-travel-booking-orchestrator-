@@ -1,0 +1,29 @@
+name: Compile LaTeX Thesis Report to PDF
+
+on:
+  push:
+    paths:
+      - '03-ai-orchestrator-report/**'
+      - '.github/workflows/compile-latex.yml'
+  workflow_dispatch:
+
+jobs:
+  build_latex:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Compile LaTeX Document
+        uses: xu-cheng/latex-action@v3
+        with:
+          root_file: main.tex
+          working_directory: 03-ai-orchestrator-report/report/BaoCao_BKU
+          compiler: pdflatex
+          args: -file-line-error -interaction=nonstopmode
+
+      - name: Upload PDF Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: BaoCao_LuanVan_BKU
+          path: 03-ai-orchestrator-report/report/BaoCao_BKU/main.pdf

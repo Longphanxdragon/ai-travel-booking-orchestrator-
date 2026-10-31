@@ -26,10 +26,15 @@ jobs:
 
     - name: Test Pydantic Schemas & Data Contract
       run: |
-        python -c "from app.models.schemas import ChatRequest, ChatResponse, VeXeKhach, PhongKhachSan; print('Schemas are 100% valid!')"
+        python -c "from app.models.schemas import ChatRequest, ChatResponse, BusSearchCriteria, HotelSearchCriteria, CrossDomainMatchResult; print('Schemas are 100% valid!')"
       working-directory: 02-core-microservices/backend
 
     - name: Test Data Cleaner Pipeline (PII Protection)
       run: |
         python -c "from app.services.tools.data_cleaner_pipeline import ConversationDataCleaner; res = ConversationDataCleaner.anonymize_pii('SĐT: 0901234567'); assert '090****567' in res; print('PII Anonymization Test Passed!')"
+      working-directory: 02-core-microservices/backend
+
+    - name: Run Core Test Suite
+      run: |
+        pytest tests/test_core_system.py
       working-directory: 02-core-microservices/backend
