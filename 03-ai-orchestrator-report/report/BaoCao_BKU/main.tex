@@ -1,4 +1,4 @@
-\documentclass[a4paper]{article}
+\documentclass[a4paper]{report}
 \usepackage{iftex}
 \ifPDFTeX
   \usepackage[T5]{fontenc}
@@ -164,6 +164,21 @@ texcl=true
 \setlength{\intextsep}{10pt plus 2pt minus 2pt}
 
 \thesislayout
+
+
+\fancypagestyle{plain}{\pagestyle{fancy}}
+\makeatletter
+\@ifundefined{chapter}{
+  \newcounter{chapter}
+  \newcommand{\chapter}[1]{%
+    \clearpage
+    \refstepcounter{chapter}%
+    \section*{\Huge\bfseries Chương \thechapter\quad #1}%
+    \addcontentsline{toc}{chapter}{\textbf{Chương \thechapter\quad #1}}%
+    \vspace{0.5cm}%
+  }
+}{}
+\makeatother
 
 \begin{document}
 

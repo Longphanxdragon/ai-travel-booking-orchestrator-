@@ -7,23 +7,46 @@ on:
       - '.github/workflows/compile-latex.yml'
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build_latex:
+    name: Build LaTeX Thesis PDF
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Compile LaTeX Document
+      - name: Compile LaTeX Document with latexmk
         uses: xu-cheng/latex-action@v3
         with:
           root_file: main.tex
           working_directory: 03-ai-orchestrator-report/report/BaoCao_BKU
-          compiler: pdflatex
-          args: -file-line-error -interaction=nonstopmode
+          compiler: latexmk
+          args: -pdf -file-line-error -interaction=nonstopmode -synctex=1
+
+      - name: Rename Output PDF
+        run: |
+          cp 03-ai-orchestrator-report/report/BaoCao_BKU/main.pdf 03-ai-orchestrator-report/report/BaoCao_BKU/BaoCao_LuanVan_TotNghiep_BKU.pdf
 
       - name: Upload PDF Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: BaoCao_LuanVan_BKU
-          path: 03-ai-orchestrator-report/report/BaoCao_BKU/main.pdf
+          name: BaoCao_LuanVan_TotNghiep_BKU
+          path: 03-ai-orchestrator-report/report/BaoCao_BKU/BaoCao_LuanVan_TotNghiep_BKU.pdf
+          retention-days: 90
+
+      - name: Release Latest Thesis PDF
+        if: github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        continue-on-error: true
+        with:
+          tag_name: latest-pdf
+          name: "Báo cáo Luận văn Tốt nghiệp BKU (Bản mới nhất)"
+          body: |
+            Tự động biên dịch từ mã nguồn LaTeX ĐH Bách Khoa TP.HCM (HCMUT).
+            - Đề tài: **Nghiên cứu ứng dụng Hybrid Search, Function Calling và Multi-Agent trong tư vấn đặt lịch trình du lịch thông minh**
+            - SVTH: Phan Thành Long
+            - Commit: `${{ github.sha }}`
+          files: 03-ai-orchestrator-report/report/BaoCao_BKU/BaoCao_LuanVan_TotNghiep_BKU.pdf
