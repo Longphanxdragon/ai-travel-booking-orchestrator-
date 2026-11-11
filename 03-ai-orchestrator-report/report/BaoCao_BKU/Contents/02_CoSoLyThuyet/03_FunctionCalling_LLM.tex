@@ -25,7 +25,7 @@ WHERE room_id = 'HOTEL-DL-01'
 FOR UPDATE;
 
 -- Kiem tra dieu kien con phong:
--- Neu available_rooms >= so_phong_yeu_cau:
+-- Neu so phong trong thoa man yeu cau:
 UPDATE hotel_rooms 
 SET available_rooms = available_rooms - 1 
 WHERE room_id = 'HOTEL-DL-01';

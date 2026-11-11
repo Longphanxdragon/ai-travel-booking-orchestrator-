@@ -54,8 +54,8 @@ USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100);
 -- 6. Du lieu mau (Seed Data) kiem thu he thong
 INSERT INTO tenants (tenant_id, name, status, hotline) 
 VALUES 
-(101, 'Tiệm Cơm Sườn Bì Chả Sài Gòn', 'ACTIVE', '0901234567'),
-(102, 'Chuỗi Cà Phê AI RAG Express', 'ACTIVE', '0909888999')
+(101, 'Nha Xe Giuong Nam Dien Linh SG-DL', 'ACTIVE', '0901234567'),
+(102, 'Homestay Thung Lung May Da Lat', 'ACTIVE', '0909888999')
 ON CONFLICT (tenant_id) DO NOTHING;
 \end{lstlisting}
 
@@ -84,9 +84,9 @@ class OmnichannelShopperUser(HttpUser):
     def simulate_menu_inquiry(self):
         """Gia lap luong hoi dap thuc don AI RAG"""
         questions = [
-            "Quán có món cơm sườn nào không cay cho trẻ em không?",
-            "Cho mình xin bảng giá đồ uống lạnh buổi sáng",
-            "Món bán chạy nhất của quán hôm nay là gì?"
+            "Chuyen xe 23:00 toi mai con giuong doi khong?",
+            "Homestay co cho mang theo cho poodle khong shop?",
+            "Xe den luc 6h sang co duoc nhan phong som khong?"
         ]
         payload = {
             "tenant_id": random.choice([101, 102]),
@@ -107,7 +107,7 @@ class OmnichannelShopperUser(HttpUser):
         """Gia lap luong chot don hang vao RabbitMQ (> 1000 don/phut)"""
         order_payload = {
             "order_code": f"ORD-{int(time.time())}-{random.randint(10, 99)}",
-            "items": [{"name": "Cơm sườn đặc biệt", "qty": 2, "price": 50000}],
+            "items": [{"service": "Ve xe giuong doi", "qty": 2, "price": 750000}],
             "total_amount": 100000,
             "customer_phone": "0901234567"
         }
