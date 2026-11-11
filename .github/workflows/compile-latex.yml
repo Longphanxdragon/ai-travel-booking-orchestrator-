@@ -18,13 +18,25 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Compile LaTeX Document with latexmk
+      - name: Compile LaTeX Document
         uses: xu-cheng/latex-action@v3
         with:
           root_file: main.tex
           working_directory: 03-ai-orchestrator-report/report/BaoCao_BKU
           compiler: latexmk
-          args: -pdf -file-line-error -interaction=nonstopmode -synctex=1
+          args: -pdf -file-line-error -interaction=nonstopmode
+
+      - name: Print Log on Failure
+        if: failure()
+        run: |
+          tail -n 250 03-ai-orchestrator-report/report/BaoCao_BKU/main.log || true
+
+      - name: Upload Compilation Log on Failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: latex-compilation-log
+          path: 03-ai-orchestrator-report/report/BaoCao_BKU/main.log
 
       - name: Rename Output PDF
         run: |
@@ -45,8 +57,8 @@ jobs:
           tag_name: latest-pdf
           name: "Báo cáo Luận văn Tốt nghiệp BKU (Bản mới nhất)"
           body: |
-            Tự động biên dịch từ mã nguồn LaTeX ĐH Bách Khoa TP.HCM (HCMUT).
-            - Đề tài: **Nghiên cứu ứng dụng Hybrid Search, Function Calling và Multi-Agent trong tư vấn đặt lịch trình du lịch thông minh**
+            Bản biên dịch PDF tự động của Luận văn Tốt nghiệp BKU:
+            **Nghiên cứu ứng dụng Hybrid Search, Function Calling và Multi-Agent trong tư vấn đặt lịch trình du lịch thông minh**
             - SVTH: Phan Thành Long
             - Commit: `${{ github.sha }}`
           files: 03-ai-orchestrator-report/report/BaoCao_BKU/BaoCao_LuanVan_TotNghiep_BKU.pdf

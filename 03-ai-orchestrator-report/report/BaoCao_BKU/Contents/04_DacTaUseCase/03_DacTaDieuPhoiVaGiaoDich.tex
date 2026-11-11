@@ -29,13 +29,11 @@
         \item Hotel Agent gọi công cụ tìm phòng cho phép chó cưng $\rightarrow$ Trả về Homestay Thung Lũng Mây, giờ nhận phòng tiêu chuẩn $T_{\text{checkin}} = \text{14:00}$.
     \end{itemize}
     \item Module \texttt{ConstraintSolver} tính toán độ lệch thời gian:
-    \begin{equation}
-    \Delta T = 14:00 - 06:15 = 7\text{ giờ } 45\text{ phút} > 3.0\text{ giờ} \implies \mathbb{I}_{\text{conflict}} = 1
-    \end{equation}
+    $\Delta T = 14:00 - 06:15 = 7\text{ giờ } 45\text{ phút} > 3.0\text{ giờ} \implies \mathbb{I}_{\text{conflict}} = 1$
     \item Phát hiện xung đột (Khách phải chờ gần 8 tiếng ngoài đường), Orchestrator điều hướng luồng suy luận sang nút \texttt{CONFLICT\_RESOLVER}.
     \item Tác tử gọi Qdrant Hybrid Search trích xuất chính sách nhận phòng sớm: \textit{"Hỗ trợ nhận phòng sớm từ 06:00 với phụ phí 150.000 VNĐ hoặc giữ hành lý miễn phí tại quầy lễ tân"}.
     \item Orchestrator tổng hợp toàn bộ giải pháp thành câu trả lời hoàn chỉnh kèm cảnh báo lịch trình thông minh:
-    \textit{"⚠️ Lưu ý lịch trình: Xe đến lúc 06:15 nhưng giờ nhận phòng là 14:00 (Chờ 8 tiếng). Khách sạn hỗ trợ nhận phòng sớm phụ thu 150.000đ hoặc giữ hành lý miễn phí tại quầy lễ tân."}
+    \textit{"[CẢNH BÁO] Lưu ý lịch trình: Xe đến lúc 06:15 nhưng giờ nhận phòng là 14:00 (Chờ 8 tiếng). Khách sạn hỗ trợ nhận phòng sớm phụ thu 150.000đ hoặc giữ hành lý miễn phí tại quầy lễ tân."}
 \end{enumerate} \\
 \hline
 \textbf{Luồng ngoại lệ} & 
@@ -75,7 +73,7 @@
     \item Kiểm tra điều kiện tồn kho thực tế: \texttt{available\_seats = 4 >= 2}.
     \item Tiến hành cập nhật giảm tồn kho:
     \begin{center}
-    \texttt{UPDATE bus_trips SET available\_seats = available\_seats - 2 WHERE trip\_id = 'BUS-SG-DL-2300';}
+    \texttt{UPDATE bus\_trips SET available\_seats = available\_seats - 2 WHERE trip\_id = 'BUS-SG-DL-2300';}
     \end{center}
     \item Chèn bản ghi giữ chỗ tạm thời vào bảng \texttt{reservations}:
     \begin{itemize}
