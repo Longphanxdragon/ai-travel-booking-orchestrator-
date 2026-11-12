@@ -76,3 +76,83 @@ Trong các hệ thống Agentic phức tạp, nếu CSDL không trả về kết
     \item \textbf{Biến đếm Đệ quy Hạn mức (Recursion Counter Guard):} Thuộc tính \texttt{iteration\_count} tự động tăng thêm 1 sau mỗi lần đồ thị quay về \texttt{ROUTER\_NODE}. Khi $\texttt{iteration\_count} \ge 3$, cạnh có điều kiện (Conditional Edge) ép buộc luồng nhảy ngay lập tức vào nút \texttt{SYNTHESIS\_NODE} với phản hồi báo lỗi lịch sự kèm hướng dẫn liên hệ trực tiếp nhân viên tổng đài.
     \item \textbf{Cơ chế Lưu vết Trạng thái (Checkpointer Persistence):} Trạng thái đồ thị tại mỗi bước chuyển đổi được lưu trữ với khóa phân vùng \texttt{session\_id}, cho phép phục hồi nguyên vẹn ngữ cảnh nếu dịch vụ bị tái khởi động giữa chừng.
 \end{enumerate}
+
+
+\subsection{Sơ đồ Luồng Điều phối Đa Tác tử \& Giải quyết Xung đột CSP Toàn trình}
+\label{subsec:e2e_orchestration_pipeline}
+
+Để cụ thể hóa trực quan cơ chế vận hành của mạng lưới tác tử, Sơ đồ Hình~\ref{fig:end_to_end_orchestration_pipeline} mô tả toàn bộ luồng dữ liệu và chuỗi kích hoạt từ thời điểm tiếp nhận câu hỏi của người dùng, qua tầng lọc bảo vệ dữ liệu PII, điều phối phân rã tác vụ song song, giải bài toán thỏa mãn ràng buộc CSP trên không gian thời gian thực, đàm phán chính sách nhận phòng sớm và bắn thông báo phản hồi song kênh (Khách hàng \& Chủ doanh nghiệp).
+
+\begin{figure}[h!]
+\centering
+\begin{tikzpicture}[
+    node distance=0.7cm and 1.2cm,
+    font=\footnotesize\sffamily,
+    box/.style={draw, rounded corners=3pt, thick, align=center, fill=white, drop shadow},
+    client/.style={box, fill=blue!10, text width=3.4cm, minimum height=0.8cm},
+    gateway/.style={box, fill=orange!15, text width=4.0cm, minimum height=0.85cm},
+    agent/.style={box, fill=teal!15, text width=3.2cm, minimum height=0.85cm},
+    db/.style={box, fill=purple!15, text width=3.2cm, minimum height=0.85cm},
+    solver/.style={box, fill=yellow!20, text width=5.0cm, minimum height=0.9cm},
+    decision/.style={draw, diamond, aspect=2, thick, align=center, fill=red!10, text width=2.4cm, font=\scriptsize\sffamily},
+    negotiate/.style={box, fill=cyan!15, text width=3.8cm, minimum height=0.85cm},
+    output/.style={box, fill=green!15, text width=3.4cm, minimum height=0.9cm},
+    arrow/.style={->, >=stealth, thick}
+]
+
+% 1. Tac nhan nguoi dung
+\node[client] (user) {\textbf{Người dùng Đa kênh}\\\scriptsize (Zalo OA / FB Messenger)};
+
+% 2. Gateway & PII
+\node[gateway, below=0.6cm of user] (gw) {\textbf{FastAPI Webhook / PII Engine}\\\scriptsize Ẩn danh hóa Regex: SĐT (\texttt{090****567}), Email};
+
+% 3. LangGraph Orchestrator
+\node[agent, below=0.7cm of gw, fill=teal!25, text width=4.6cm] (orch) {\textbf{LangGraph StateGraph Engine}\\\scriptsize Orchestrator Trung tâm (Star Topology)\\\scriptsize Cơ chế bảo vệ: \texttt{iteration\_count} $\le$ 3};
+
+% 4. Hai tac tu chuyen gia song song
+\node[agent, below left=0.9cm and 0.5cm of orch] (bus_agent) {\textbf{Bus Specialist}\\\scriptsize (Lọc chuyến, giờ xuất bến/đến)};
+\node[agent, below right=0.9cm and 0.5cm of orch] (hotel_agent) {\textbf{Hotel Specialist}\\\scriptsize (Lọc phòng, thú cưng, check-in)};
+
+% 5. CSDL & Vector Search
+\node[db, below=0.6cm of bus_agent] (db_bus) {\textbf{PostgreSQL 16}\\\scriptsize Khóa bi quan ACID\\\scriptsize (\texttt{SELECT ... FOR UPDATE})};
+\node[db, below=0.6cm of hotel_agent] (db_hotel) {\textbf{PostgreSQL 16 \& Qdrant}\\\scriptsize CSDL Tồn kho phòng trống\\\& Hybrid Search RRF ($k=60$)};
+
+% 6. Bo giai rang buoc CSP
+\node[solver, below=2.6cm of orch] (csp) {\textbf{Constraint Solver \& Conflict Detector}\\\scriptsize Mô hình CSP $\langle X, D, C \rangle$: Tính toán độ lệch giờ\\\scriptsize $\Delta T = T_{\text{checkin}}(X_{\text{hotel}}) - T_{\text{arr}}(X_{\text{bus}})$};
+
+% 7. Phan nhanh quyet dinh
+\node[decision, below=0.7cm of csp] (cond) {Xung đột?\\$\Delta T > 3\text{h}$?};
+
+% 8. Nut dam phan giai cuu lich trinh
+\node[negotiate, right=1.2cm of cond] (nego) {\textbf{Negotiation Node}\\\scriptsize Trích xuất chính sách Early Check-in\\\& Báo giá phụ thu / giữ hành lý};
+
+% 9. Dau ra da kenh
+\node[output, below left=0.9cm and 0.3cm of cond] (out_user) {\textbf{Kênh Khách hàng}\\\scriptsize Markdown tổng hợp lịch trình\\\& Cảnh báo lệch giờ thông minh};
+\node[output, below right=0.9cm and 0.3cm of cond] (out_owner) {\textbf{Kênh Chủ Doanh nghiệp}\\\scriptsize Thông báo ChatOps (Telegram/Zalo)\\\scriptsize Kèm nút bấm: \texttt{[Gọi ngay]}, \texttt{[Cọc]}};
+
+% Ket noi cac mui ten
+\draw[arrow] (user) -- node[right] {\scriptsize POST /chat} (gw);
+\draw[arrow] (gw) -- node[right] {\scriptsize Cleaned Query} (orch);
+
+\draw[arrow] (orch) -| node[above, near start] {\scriptsize Parallel Dispatch} (bus_agent);
+\draw[arrow] (orch) -| node[above, near start] {\scriptsize Parallel Dispatch} (hotel_agent);
+
+\draw[arrow] (bus_agent) -- node[right] {\scriptsize SQL} (db_bus);
+\draw[arrow] (hotel_agent) -- node[right] {\scriptsize SQL + RRF} (db_hotel);
+
+\draw[arrow] (db_bus) |- (csp);
+\draw[arrow] (db_hotel) |- (csp);
+
+\draw[arrow] (csp) -- (cond);
+
+\draw[arrow] (cond) -- node[above] {\scriptsize Đúng ($\mathbb{I}_{\text{conflict}}=1$)} (nego);
+\draw[arrow] (nego) |- (out_user);
+\draw[arrow] (nego) |- (out_owner);
+
+\draw[arrow] (cond) -- node[left] {\scriptsize Sai ($\mathbb{I}_{\text{conflict}}=0$)} (out_user);
+\draw[arrow] (cond) -- node[right] {\scriptsize Khớp chuẩn} (out_owner);
+
+\end{tikzpicture}
+\caption{Sơ đồ Luồng Xử lý Toàn trình của Hệ thống Điều phối Đa Tác tử (End-to-End Multi-Agent Orchestration \& CSP Resolution Pipeline)}
+\label{fig:end_to_end_orchestration_pipeline}
+\end{figure}
